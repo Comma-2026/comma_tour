@@ -31,7 +31,7 @@ yarn-error.*
 *.pem
 
 # local env files
-.env
+.envs
 .env*.local
 
 # typescript
@@ -46,3 +46,4 @@ app-example
 #additional
 .claude
 CLAUDE.*
+AGENTS.*
