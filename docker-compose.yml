@@ -1,0 +1,38 @@
+# 개발용 OpenLDAP 서버.
+#   - 도메인:        comma.tour  → base DN: dc=comma,dc=tour
+#   - 관리자 DN:     cn=admin,dc=comma,dc=tour
+#   - 관리자 비밀번호: admin (개발용)
+#
+# 실행:   docker compose up -d
+# 중지:   docker compose down          (데이터 유지)
+# 초기화: docker compose down -v       (볼륨까지 삭제)
+services:
+  openldap:
+    image: osixia/openldap:1.5.0
+    container_name: comma_openldap
+    environment:
+      LDAP_ORGANISATION: "Comma Tour"
+      LDAP_DOMAIN: "comma.tour"
+      LDAP_ADMIN_PASSWORD: "admin"
+    ports:
+      - "389:389"
+      - "636:636"
+    volumes:
+      - ldap_data:/var/lib/ldap
+      - ldap_config:/etc/ldap/slapd.d
+
+  # 선택: 브라우저에서 디렉터리를 확인할 수 있는 관리 UI (http://localhost:8080)
+  phpldapadmin:
+    image: osixia/phpldapadmin:0.9.0
+    container_name: comma_phpldapadmin
+    environment:
+      PHPLDAPADMIN_LDAP_HOSTS: "openldap"
+      PHPLDAPADMIN_HTTPS: "false"
+    ports:
+      - "8080:80"
+    depends_on:
+      - openldap
+
+volumes:
+  ldap_data:
+  ldap_config:
