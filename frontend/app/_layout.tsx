@@ -19,6 +19,8 @@ export default function RootLayout() {
         <Stack.Screen name="index" options={{ headerShown: false }} />
         {/* 로그인 */}
         <Stack.Screen name="login" options={{ headerShown: false }} />
+        {/* 회원가입 */}
+        <Stack.Screen name="signup" options={{ headerShown: false }} />
         {/* 로그인 이후 메인 탭 */}
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />

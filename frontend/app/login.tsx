@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -14,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { login } from '@/api/auth';
 import { Brand } from '@/constants/theme';
 
 /**
@@ -23,10 +25,22 @@ import { Brand } from '@/constants/theme';
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = () => {
-    // TODO: 백엔드(/login) 연동
-    console.log('login submit', { email });
+  const handleSubmit = async () => {
+    if (loading) return;
+    setLoading(true);
+    try {
+      const res = await login(email.trim(), password);
+      if (res.success) {
+        // 로그인 성공 → 메인 탭으로 이동
+        router.replace('/(tabs)/home');
+      } else {
+        Alert.alert('로그인 실패', res.message);
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleBack = () => {
@@ -99,10 +113,24 @@ export default function LoginScreen() {
             style={({ pressed }) => [
               styles.submit,
               pressed && styles.submitPressed,
+              loading && styles.submitPressed,
             ]}
             onPress={handleSubmit}
+            disabled={loading}
           >
-            <Text style={styles.submitText}>Submit</Text>
+            <Text style={styles.submitText}>{loading ? '로그인 중...' : 'Submit'}</Text>
+          </Pressable>
+
+          {/* 회원가입 */}
+          <Pressable
+            style={({ pressed }) => [
+              styles.signup,
+              pressed && styles.submitPressed,
+            ]}
+            onPress={() => router.push('/signup')}
+            disabled={loading}
+          >
+            <Text style={styles.signupText}>회원가입</Text>
           </Pressable>
 
           {/* 안내문 */}
@@ -186,6 +214,21 @@ const styles = StyleSheet.create({
   },
   submitText: {
     color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  signup: {
+    height: 46,
+    borderRadius: 30,
+    borderWidth: 1,
+    borderColor: Brand.green,
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+  },
+  signupText: {
+    color: Brand.green,
     fontSize: 15,
     fontWeight: '600',
   },
