@@ -134,10 +134,6 @@ export default function LoginScreen() {
           </Pressable>
 
           {/* 안내문 */}
-          <Text style={styles.notice}>
-            Your Canva profile name will be shared. Never submit passwords.
-          </Text>
-          <Text style={styles.link}>Learn how we handle your data</Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -204,12 +200,13 @@ const styles = StyleSheet.create({
   submit: {
     height: 46,
     borderRadius: 30,
-    backgroundColor: Brand.greenMuted,
+    backgroundColor: Brand.green,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 10,
   },
   submitPressed: {
+    backgroundColor: Brand.greenMuted,
     opacity: 0.8,
   },
   submitText: {
