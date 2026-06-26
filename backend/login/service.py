@@ -10,8 +10,10 @@ from login import model
 
 # 간단한 이메일 형식 검증
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-_MIN_PASSWORD_LEN = 6
 
+#비밀번호 형식 검증
+_MIN_PASSWORD_LEN = 6
+_PASSWORD_RE = re.compile(r"^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$")
 
 class AuthError(Exception):
     """인증 관련 도메인 에러. status_code로 HTTP 응답을 구분한다."""
@@ -27,9 +29,10 @@ def _validate_credentials(email: str, password: str) -> None:
         raise AuthError("이메일과 비밀번호를 모두 입력해주세요.", 400)
     if not _EMAIL_RE.match(email):
         raise AuthError("올바른 이메일 형식이 아닙니다.", 400)
-    if len(password) < _MIN_PASSWORD_LEN:
+    if len(password) < _MIN_PASSWORD_LEN or not _PASSWORD_RE.match(password):
         raise AuthError(
-            f"비밀번호는 최소 {_MIN_PASSWORD_LEN}자 이상이어야 합니다.", 400
+            f"비밀번호는 최소 {_MIN_PASSWORD_LEN}자 이상이며, 영문·숫자·특수기호를 포함해야 합니다.",
+            400,
         )
 
 
