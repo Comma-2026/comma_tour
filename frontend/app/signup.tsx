@@ -19,6 +19,7 @@ import { signup } from '@/api/auth';
 import { Brand } from '@/constants/theme';
 
 const MIN_PASSWORD_LEN = 6;
+const PASSWORD_REGEX = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/;
 
 /**
  * 회원가입 화면. 이메일/비밀번호로 LDAP 계정을 생성한다.
@@ -37,8 +38,11 @@ export default function SignupScreen() {
       Alert.alert('입력 확인', '이메일과 비밀번호를 모두 입력해주세요.');
       return;
     }
-    if (password.length < MIN_PASSWORD_LEN) {
-      Alert.alert('입력 확인', `비밀번호는 최소 ${MIN_PASSWORD_LEN}자 이상이어야 합니다.`);
+    if (password.length < MIN_PASSWORD_LEN || !PASSWORD_REGEX.test(password)) {
+      Alert.alert(
+        '입력 확인',
+        `비밀번호는 최소 ${MIN_PASSWORD_LEN}자 이상이며, 영문·숫자·특수기호를 포함해야 합니다.`
+      );
       return;
     }
     if (password !== confirm) {
@@ -109,7 +113,7 @@ export default function SignupScreen() {
               style={styles.input}
               value={password}
               onChangeText={setPassword}
-              placeholder={`${MIN_PASSWORD_LEN}자 이상 입력`}
+              placeholder={`${MIN_PASSWORD_LEN}자 이상, 영문·숫자·특수기호 포함`}
               placeholderTextColor={Brand.placeholder}
               secureTextEntry
               autoCapitalize="none"
