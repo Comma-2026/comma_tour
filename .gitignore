@@ -216,3 +216,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# 로컬 mock LDAP 데이터(개발용)
+backend/login/mock_ldap.json

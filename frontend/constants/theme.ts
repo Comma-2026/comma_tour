@@ -8,6 +8,23 @@ import { Platform } from 'react-native';
 const tintColorLight = '#0a7ea4';
 const tintColorDark = '#fff';
 
+/**
+ * 쉼표(comma_tour) 브랜드 색상.
+ * 스플래시/로그인 등 공통 화면에서 재사용한다.
+ */
+export const Brand = {
+  /** 메인 딥 그린 (스플래시 카드, 타이틀) */
+  green: '#2a5a3d',
+  /** 비활성/연한 그린 (Submit 버튼 등) */
+  greenMuted: '#c8ddd2',
+  /** 보조 텍스트(설명, 안내문) */
+  muted: '#9AA0A6',
+  /** 입력창 테두리 */
+  border: '#E2E5E9',
+  /** 입력창 placeholder */
+  placeholder: '#B9BEC4',
+};
+
 export const Colors = {
   light: {
     text: '#11181C',
@@ -47,7 +64,8 @@ export const Fonts = Platform.select({
   web: {
     sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
     serif: "Georgia, 'Times New Roman', serif",
-    rounded: "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
+    rounded:
+      "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
     mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
   },
 });
