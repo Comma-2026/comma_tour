@@ -4,6 +4,7 @@ from flask_cors import CORS
 
 from config import config
 from login.route import login_bp
+from spots.spots_routes import spots_bp
 
 
 def create_app() -> Flask:
@@ -11,6 +12,7 @@ def create_app() -> Flask:
     CORS(app)  # 개발 단계: 모든 오리진 허용
 
     app.register_blueprint(login_bp)
+    app.register_blueprint(spots_bp)
 
     @app.get("/api/health")
     def health():
