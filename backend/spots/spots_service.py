@@ -33,16 +33,25 @@ def _to_card(spot: dict) -> dict:
     return {field: spot[field] for field in _CARD_FIELDS}
 
 
-def recommend_spots(exclude_ids: list[str], feedback_tags: list[str] | None = None, count: int = 5) -> list[dict]:
+def recommend_spots(
+    exclude_ids: list[str],
+    feedback_tags: list[str] | None = None,
+    region: str | None = None,
+    count: int = 5,
+) -> list[dict]:
     """제외 목록을 뺀 나머지 중 랜덤으로 count개를 추천한다.
 
-    - 제외하고 나면 count개가 안 남을 경우, 전체 풀에서 다시 뽑는다(재추첨 시 소진 방지).
+    - region이 있으면 그 지역(시군구) 안에서만 뽑는다 — 다른 필터와 달리, 결과가 비어도
+      다른 지역으로 새지 않는다(사용자가 지역을 직접 골랐으므로).
+    - 제외하고 나면 count개가 안 남을 경우, (region 필터가 있다면 그 안에서만) 다시 뽑는다.
     - feedback_tags가 있으면 순서대로 필터를 적용하되, 필터 적용 결과가 비면 그 필터는 건너뛴다.
     """
     all_spots = spots_model.get_all_spots()
-    pool = [s for s in all_spots if s["id"] not in exclude_ids]
+    base_pool = [s for s in all_spots if region is None or s["region"] == region]
+
+    pool = [s for s in base_pool if s["id"] not in exclude_ids]
     if len(pool) < count:
-        pool = all_spots
+        pool = base_pool
 
     for tag in feedback_tags or []:
         filter_fn = _FEEDBACK_FILTERS.get(tag)
@@ -54,6 +63,11 @@ def recommend_spots(exclude_ids: list[str], feedback_tags: list[str] | None = No
 
     picked = random.sample(pool, min(count, len(pool)))
     return [_to_card(s) for s in picked]
+
+
+def get_available_regions() -> list[str]:
+    """현재 모드(mock/real)에 있는 스팟들의 지역(시군구) 목록을 중복 없이 정렬해서 반환."""
+    return sorted({s["region"] for s in spots_model.get_all_spots()})
 
 
 def get_spot_detail(spot_id: str) -> dict:

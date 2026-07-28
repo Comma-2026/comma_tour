@@ -1,9 +1,14 @@
-"""관광지 라우트(블루프린트): /api/spots/recommend, /api/spots/<id>."""
+"""관광지 라우트(블루프린트): /api/spots/recommend, /api/spots/regions, /api/spots/<id>."""
 from __future__ import annotations
 
 from flask import Blueprint, jsonify, request
 
-from spots.spots_service import SpotNotFoundError, get_spot_detail, recommend_spots
+from spots.spots_service import (
+    SpotNotFoundError,
+    get_available_regions,
+    get_spot_detail,
+    recommend_spots,
+)
 
 spots_bp = Blueprint("spots", __name__, url_prefix="/api/spots")
 
@@ -12,8 +17,14 @@ spots_bp = Blueprint("spots", __name__, url_prefix="/api/spots")
 def recommend_route():
     exclude_ids = [x for x in request.args.get("exclude", "").split(",") if x]
     feedback_tags = [x for x in request.args.get("feedback", "").split(",") if x]
-    spots = recommend_spots(exclude_ids, feedback_tags)
+    region = request.args.get("region") or None
+    spots = recommend_spots(exclude_ids, feedback_tags, region)
     return jsonify({"spots": spots})
+
+
+@spots_bp.get("/regions")
+def regions_route():
+    return jsonify({"regions": get_available_regions()})
 
 
 @spots_bp.get("/<spot_id>")

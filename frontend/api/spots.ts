@@ -85,18 +85,27 @@ async function getJson<T>(path: string): Promise<T | null> {
  * 랜덤 관광지 5곳 추천.
  * - excludeIds: 이미 보여준 카드(재추첨 시 후보에서 제외)
  * - feedbackTags: 카드에서 선택한 "아쉬운 점" 태그(다음 추천 후보를 좁히는 데 사용)
+ * - region: 지역(시군구) 선택 시 그 안에서만 추천. null/미지정이면 전체.
  */
 export async function fetchRecommendedSpots(
   excludeIds: string[] = [],
   feedbackTags: string[] = [],
+  region?: string | null,
 ): Promise<SpotCard[]> {
   const params = new URLSearchParams();
   if (excludeIds.length > 0) params.set('exclude', excludeIds.join(','));
   if (feedbackTags.length > 0) params.set('feedback', feedbackTags.join(','));
+  if (region) params.set('region', region);
   const query = params.toString() ? `?${params.toString()}` : '';
 
   const data = await getJson<{ spots: SpotCard[] }>(`/api/spots/recommend${query}`);
   return data?.spots ?? [];
+}
+
+/** 선택 가능한 지역(시군구) 목록. */
+export async function fetchAvailableRegions(): Promise<string[]> {
+  const data = await getJson<{ regions: string[] }>('/api/spots/regions');
+  return data?.regions ?? [];
 }
 
 /** 관광지 상세 정보 조회. 없으면 null. */

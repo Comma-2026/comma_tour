@@ -3,7 +3,13 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { FEEDBACK_TAGS, PREFERENCE_TAG_GROUPS, fetchRecommendedSpots, type SpotCard } from '@/api/spots';
+import {
+    FEEDBACK_TAGS,
+    PREFERENCE_TAG_GROUPS,
+    fetchAvailableRegions,
+    fetchRecommendedSpots,
+    type SpotCard,
+} from '@/api/spots';
 import { Brand, Fonts } from '@/constants/theme';
 
 const ScreenTheme = {
@@ -20,6 +26,12 @@ export default function PinDrawScreen() {
     // 이번 세션 동안 유지되는 선호(첫 진입 설문). 매 추천 호출에 함께 반영된다.
     const [surveyDone, setSurveyDone] = useState(false);
     const [preference, setPreference] = useState<Set<string>>(new Set());
+    const [regions, setRegions] = useState<string[]>([]);
+    const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
+
+    useEffect(() => {
+        fetchAvailableRegions().then(setRegions);
+    }, []);
 
     const [cards, setCards] = useState<SpotCard[]>([]);
     const [index, setIndex] = useState(0);
@@ -32,7 +44,7 @@ export default function PinDrawScreen() {
             setLoading(true);
             setError(false);
             const tags = [...preference, ...roundFeedbackTags];
-            const spots = await fetchRecommendedSpots(excludeIds, tags);
+            const spots = await fetchRecommendedSpots(excludeIds, tags, selectedRegion);
             if (spots.length === 0) {
                 setError(true);
             } else {
@@ -42,7 +54,7 @@ export default function PinDrawScreen() {
             }
             setLoading(false);
         },
-        [preference],
+        [preference, selectedRegion],
     );
 
     // 설문을 마치면 그 선호를 반영해 첫 3장을 뽑는다.
@@ -109,25 +121,71 @@ export default function PinDrawScreen() {
 
                     <ScrollView showsVerticalScrollIndicator={false} style={styles.surveyScroll}>
                         {PREFERENCE_TAG_GROUPS.map((group) => (
-                            <View key={group.title} style={styles.surveyGroup}>
-                                <Text style={styles.surveyGroupTitle}>{group.title}</Text>
-                                <View style={styles.chipRow}>
-                                    {group.tags.map((tag) => {
-                                        const selected = preference.has(tag.id);
-                                        return (
+                            <View key={group.title}>
+                                <View style={styles.surveyGroup}>
+                                    <Text style={styles.surveyGroupTitle}>{group.title}</Text>
+                                    <View style={styles.chipRow}>
+                                        {group.tags.map((tag) => {
+                                            const selected = preference.has(tag.id);
+                                            return (
+                                                <TouchableOpacity
+                                                    key={tag.id}
+                                                    style={[styles.chip, selected && styles.chipSelected]}
+                                                    activeOpacity={0.8}
+                                                    onPress={() => togglePreference(tag.id)}
+                                                >
+                                                    <Text
+                                                        style={[styles.chipText, selected && styles.chipTextSelected]}
+                                                    >
+                                                        {tag.label}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </View>
+                                </View>
+
+                                {group.title === '테마별' && (
+                                    <View style={styles.surveyGroup}>
+                                        <Text style={styles.surveyGroupTitle}>지역</Text>
+                                        <View style={styles.chipRow}>
                                             <TouchableOpacity
-                                                key={tag.id}
-                                                style={[styles.chip, selected && styles.chipSelected]}
+                                                style={[styles.chip, selectedRegion === null && styles.chipSelected]}
                                                 activeOpacity={0.8}
-                                                onPress={() => togglePreference(tag.id)}
+                                                onPress={() => setSelectedRegion(null)}
                                             >
-                                                <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
-                                                    {tag.label}
+                                                <Text
+                                                    style={[
+                                                        styles.chipText,
+                                                        selectedRegion === null && styles.chipTextSelected,
+                                                    ]}
+                                                >
+                                                    전체
                                                 </Text>
                                             </TouchableOpacity>
-                                        );
-                                    })}
-                                </View>
+                                            {regions.map((region) => {
+                                                const selected = selectedRegion === region;
+                                                return (
+                                                    <TouchableOpacity
+                                                        key={region}
+                                                        style={[styles.chip, selected && styles.chipSelected]}
+                                                        activeOpacity={0.8}
+                                                        onPress={() => setSelectedRegion(region)}
+                                                    >
+                                                        <Text
+                                                            style={[
+                                                                styles.chipText,
+                                                                selected && styles.chipTextSelected,
+                                                            ]}
+                                                        >
+                                                            {region}
+                                                        </Text>
+                                                    </TouchableOpacity>
+                                                );
+                                            })}
+                                        </View>
+                                    </View>
+                                )}
                             </View>
                         ))}
                     </ScrollView>
@@ -266,7 +324,7 @@ const styles = StyleSheet.create({
     },
     surveyScroll: {
         flex: 1,
-        marginTop: 20,
+        marginTop: 10,
     },
     surveyGroup: {
         marginBottom: 20,
