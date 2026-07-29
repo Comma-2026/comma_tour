@@ -377,7 +377,6 @@ export default function MapScreen() {
         <SafeAreaView style={styles.safe} edges={['top']}>
             <View style={styles.header}>
                 <Text style={styles.headerLabel}>지도</Text>
-                <Text style={styles.headerTitle}>지도 페이지</Text>
                 <Text style={styles.headerCount}>경상북도 {filteredSpots.length}곳</Text>
             </View>
 
@@ -482,12 +481,6 @@ const styles = StyleSheet.create({
         fontSize: 11,
         fontWeight: '700',
         color: ScreenTheme.muted,
-    },
-    headerTitle: {
-        fontFamily: Fonts.serif,
-        fontSize: 18,
-        fontWeight: '800',
-        color: ScreenTheme.text,
     },
     headerCount: {
         fontSize: 11,
