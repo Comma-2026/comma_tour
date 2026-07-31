@@ -256,6 +256,12 @@ def _fetch_wellness_ids() -> set[str]:
     return {item["contentId"] for item in items}
 
 
+def _to_https(url: str | None) -> str | None:
+    if url and url.startswith("http://"):
+        return "https://" + url[len("http://"):]
+    return url
+
+
 def _base_fields(item: dict, congestion_rate: float | None = None, wellness_ids: set[str] | None = None) -> dict:
     """areaBasedList2 / detailCommon2 공통으로 들어있는 필드를 우리 스키마로 매핑."""
     lat, lng = float(item["mapy"]), float(item["mapx"])
@@ -281,7 +287,8 @@ def _base_fields(item: dict, congestion_rate: float | None = None, wellness_ids:
         "id": item["contentid"],
         "name": item["title"],
         "region": addr1.split(" ")[1] if addr1 else "경상북도",
-        "icon": "📍",  # TODO: firstimage(실제 사진 URL)로 교체할지 프론트와 논의 필요
+        "icon": "📍",
+        "imageUrl": _to_https(item.get("firstimage") or None),
         "tags": tags,
         "shortDesc": addr1,
         "congestion": congestion,

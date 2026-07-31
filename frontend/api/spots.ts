@@ -18,6 +18,7 @@ export type SpotDetail = SpotCard & {
   transportInfo: string;
   rating: number;
   reviewQuote: string;
+  imageUrl: string | null;
   lat: number;
   lng: number;
 };

@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { fetchSpotDetail, type SpotDetail } from '@/api/spots';
 import { Brand, Fonts } from '@/constants/theme';
+import type { Pin } from '@/types/pin';
+import { savePin } from '@/utils/pinStorage';
 
 const ScreenTheme = {
     background: '#f9f8f2',
@@ -15,7 +18,8 @@ const ScreenTheme = {
 
 export default function SpotDetailScreen() {
     const router = useRouter();
-    const { id } = useLocalSearchParams<{ id: string }>();
+    const { id, from } = useLocalSearchParams<{ id: string; from?: string }>();
+    const isFromRecords = from === 'records';
     const [spot, setSpot] = useState<SpotDetail | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -34,7 +38,23 @@ export default function SpotDetailScreen() {
         );
     };
 
-    const handleSelect = () => {
+    const handleSelect = async () => {
+        if (!spot) return;
+
+        const pin: Pin = {
+            id: Date.now().toString(),
+            contentId: spot.id,
+            place_name: spot.name,
+            region: spot.region,
+            latitude: spot.lat,
+            longitude: spot.lng,
+            visited_at: new Date().toISOString().slice(0, 10),
+            memo: null,
+            photo_url: null,
+            phrase: null,
+        };
+        await savePin(pin);
+
         Alert.alert('핀 완료', '이 여행지가 지도에 핀으로 저장됐어요. (다이어리 작성은 곧 연결될 예정이에요)', [
             {
                 text: '확인',
@@ -67,8 +87,18 @@ export default function SpotDetailScreen() {
                     <Text style={styles.title}>📍 {spot.name}</Text>
 
                     <View style={styles.banner}>
-                        <Text style={styles.bannerIcon}>{spot.icon}</Text>
+                        {spot.imageUrl ? (
+                            <Image
+                                source={{ uri: spot.imageUrl }}
+                                style={styles.bannerImage}
+                                contentFit="cover"
+                                transition={150}
+                            />
+                        ) : (
+                            <Text style={styles.bannerIcon}>{spot.icon}</Text>
+                        )}
 
+                        {spot.imageUrl && <View style={styles.bannerScrim} />}
                         <Text style={styles.bannerTagLeft}>{spot.tags[0]}</Text>
                         <Text style={styles.bannerTagRight}>● {spot.congestion}</Text>
                     </View>
@@ -91,12 +121,24 @@ export default function SpotDetailScreen() {
                     <Text style={styles.reviewQuote}>"{spot.reviewQuote}"</Text>
 
                     <View style={styles.actionRow}>
-                        <TouchableOpacity style={styles.secondaryButton} activeOpacity={0.85} onPress={handleDirections}>
-                            <Text style={styles.secondaryButtonText}>길찾기</Text>
+                        <TouchableOpacity
+                            style={isFromRecords ? styles.primaryButton : styles.secondaryButton}
+                            activeOpacity={0.85}
+                            onPress={handleDirections}
+                        >
+                            <Text
+                                style={
+                                    isFromRecords ? styles.primaryButtonText : styles.secondaryButtonText
+                                }
+                            >
+                                길찾기
+                            </Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.primaryButton} activeOpacity={0.85} onPress={handleSelect}>
-                            <Text style={styles.primaryButtonText}>이 여행지로 정하기</Text>
-                        </TouchableOpacity>
+                        {!isFromRecords && (
+                            <TouchableOpacity style={styles.primaryButton} activeOpacity={0.85} onPress={handleSelect}>
+                                <Text style={styles.primaryButtonText}>이 여행지로 정하기</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
                 </ScrollView>
             )}
@@ -161,6 +203,17 @@ const styles = StyleSheet.create({
     bannerIcon: {
         fontSize: 64,
         color: '#ffffff',
+    },
+    bannerImage: {
+        ...StyleSheet.absoluteFillObject,
+    },
+    bannerScrim: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        bottom: 0,
+        height: 56,
+        backgroundColor: 'rgba(0,0,0,0.32)',
     },
     bannerTagLeft: {
         position: 'absolute',

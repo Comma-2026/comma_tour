@@ -5,7 +5,11 @@
       "name": "청량산 도립공원",
       "region": "봉화군",
       "icon": "▲",
-      "tags": ["자연", "트레킹"],
+      "imageUrl": null,
+      "tags": [
+        "자연",
+        "트레킹"
+      ],
       "shortDesc": "기암절벽과 솔숲이 어우러진 청정 명산. 봉화의 비밀처럼 조용하다.",
       "congestion": "매우 한적",
       "congestionLevel": "very_quiet",
@@ -28,7 +32,11 @@
       "name": "봉화 송이밸리",
       "region": "봉화군",
       "icon": "🍄",
-      "tags": ["미식", "체험"],
+      "imageUrl": null,
+      "tags": [
+        "미식",
+        "체험"
+      ],
       "shortDesc": "봉화 송이버섯 산지를 테마로 한 체험형 관광지. 가을이면 향이 가득하다.",
       "congestion": "한적",
       "congestionLevel": "quiet",
@@ -51,7 +59,11 @@
       "name": "영양 자작나무숲",
       "region": "영양군",
       "icon": "🌲",
-      "tags": ["자연", "힐링"],
+      "imageUrl": null,
+      "tags": [
+        "자연",
+        "힐링"
+      ],
       "shortDesc": "죽파리 일대 인공 자작나무숲. 계절마다 다른 얼굴을 보여준다.",
       "congestion": "매우 한적",
       "congestionLevel": "very_quiet",
@@ -74,7 +86,11 @@
       "name": "백암온천",
       "region": "울진군",
       "icon": "♨",
-      "tags": ["휴식", "온천"],
+      "imageUrl": null,
+      "tags": [
+        "휴식",
+        "온천"
+      ],
       "shortDesc": "유황 성분이 함유된 국내 대표 온천. 몸을 녹이고 가기 좋다.",
       "congestion": "보통",
       "congestionLevel": "moderate",
@@ -97,7 +113,11 @@
       "name": "불영계곡",
       "region": "울진군",
       "icon": "🏞",
-      "tags": ["자연", "트레킹"],
+      "imageUrl": null,
+      "tags": [
+        "자연",
+        "트레킹"
+      ],
       "shortDesc": "기암괴석과 맑은 계곡이 15km 이어지는 협곡. 여름 피서지로도 유명하다.",
       "congestion": "한적",
       "congestionLevel": "quiet",
@@ -120,7 +140,11 @@
       "name": "주왕산 국립공원",
       "region": "청송군",
       "icon": "⛰",
-      "tags": ["자연", "트레킹"],
+      "imageUrl": null,
+      "tags": [
+        "자연",
+        "트레킹"
+      ],
       "shortDesc": "기암절벽과 폭포가 어우러진 국립공원. 완만한 트레킹 코스가 인기다.",
       "congestion": "보통",
       "congestionLevel": "moderate",
@@ -143,7 +167,11 @@
       "name": "달기약수터",
       "region": "청송군",
       "icon": "💧",
-      "tags": ["미식", "휴식"],
+      "imageUrl": null,
+      "tags": [
+        "미식",
+        "휴식"
+      ],
       "shortDesc": "탄산 성분이 풍부한 약수로 유명한 계곡. 약수백숙이 별미다.",
       "congestion": "한적",
       "congestionLevel": "quiet",
@@ -166,7 +194,11 @@
       "name": "병산서원",
       "region": "안동시",
       "icon": "🏯",
-      "tags": ["역사", "힐링"],
+      "imageUrl": null,
+      "tags": [
+        "역사",
+        "힐링"
+      ],
       "shortDesc": "유네스코 세계유산 서원. 낙동강을 마주한 만대루가 유명하다.",
       "congestion": "매우 한적",
       "congestionLevel": "very_quiet",
@@ -189,7 +221,10 @@
       "name": "반변천 생태공원",
       "region": "영양군",
       "icon": "🌊",
-      "tags": ["자연"],
+      "imageUrl": null,
+      "tags": [
+        "자연"
+      ],
       "shortDesc": "별빛 아래 강변을 따라 걷는 고요한 산책로.",
       "congestion": "매우 한적",
       "congestionLevel": "very_quiet",
@@ -212,7 +247,11 @@
       "name": "예천 회룡포",
       "region": "예천군",
       "icon": "🌀",
-      "tags": ["자연", "힐링"],
+      "imageUrl": null,
+      "tags": [
+        "자연",
+        "힐링"
+      ],
       "shortDesc": "물돌이 마을을 한눈에 담는 전망대. 강이 마을을 휘감아 도는 풍경이 특별하다.",
       "congestion": "한적",
       "congestionLevel": "quiet",
@@ -235,7 +274,11 @@
       "name": "영주 부석사",
       "region": "영주시",
       "icon": "🏯",
-      "tags": ["역사", "힐링"],
+      "imageUrl": null,
+      "tags": [
+        "역사",
+        "힐링"
+      ],
       "shortDesc": "무량수전과 배흘림기둥으로 유명한 천년 고찰. 해질 무렵 풍경이 특히 아름답다.",
       "congestion": "보통",
       "congestionLevel": "moderate",
@@ -258,7 +301,12 @@
       "name": "문경새재 도립공원",
       "region": "문경시",
       "icon": "⛰",
-      "tags": ["자연", "트레킹", "역사"],
+      "imageUrl": null,
+      "tags": [
+        "자연",
+        "트레킹",
+        "역사"
+      ],
       "shortDesc": "조선시대 고갯길을 따라 걷는 트레킹 코스. 세 개의 관문이 옛 이야기를 품고 있다.",
       "congestion": "한적",
       "congestionLevel": "quiet",
@@ -281,7 +329,10 @@
       "name": "의성 조문국사적지",
       "region": "의성군",
       "icon": "🪨",
-      "tags": ["역사"],
+      "imageUrl": null,
+      "tags": [
+        "역사"
+      ],
       "shortDesc": "삼한시대 조문국의 고분이 모여 있는 사적지. 능선을 따라 고요한 산책이 이어진다.",
       "congestion": "매우 한적",
       "congestionLevel": "very_quiet",
@@ -304,7 +355,11 @@
       "name": "청도 운문사",
       "region": "청도군",
       "icon": "🏯",
-      "tags": ["역사", "힐링"],
+      "imageUrl": null,
+      "tags": [
+        "역사",
+        "힐링"
+      ],
       "shortDesc": "소나무 숲으로 둘러싸인 천년 고찰. 비구니 스님들의 수행 도량으로도 유명하다.",
       "congestion": "한적",
       "congestionLevel": "quiet",
@@ -327,7 +382,11 @@
       "name": "상주 경천대",
       "region": "상주시",
       "icon": "🏞",
-      "tags": ["자연", "힐링"],
+      "imageUrl": null,
+      "tags": [
+        "자연",
+        "힐링"
+      ],
       "shortDesc": "낙동강이 내려다보이는 정자와 전망대. 강물이 만든 절벽 풍경이 인상적이다.",
       "congestion": "한적",
       "congestionLevel": "quiet",
@@ -350,7 +409,10 @@
       "name": "고령 대가야 고분군",
       "region": "고령군",
       "icon": "🪨",
-      "tags": ["역사"],
+      "imageUrl": null,
+      "tags": [
+        "역사"
+      ],
       "shortDesc": "유네스코 세계유산으로 등재된 대가야 왕릉급 고분군. 능선 위로 이어진 봉분이 장관이다.",
       "congestion": "매우 한적",
       "congestionLevel": "very_quiet",
@@ -373,7 +435,11 @@
       "name": "성주 가야산 야영장",
       "region": "성주군",
       "icon": "⛺",
-      "tags": ["자연", "체험"],
+      "imageUrl": null,
+      "tags": [
+        "자연",
+        "체험"
+      ],
       "shortDesc": "가야산 자락에 자리한 야영장. 계곡물 소리를 들으며 하룻밤 머물 수 있다.",
       "congestion": "보통",
       "congestionLevel": "moderate",
@@ -396,7 +462,11 @@
       "name": "칠곡 가산산성",
       "region": "칠곡군",
       "icon": "🧱",
-      "tags": ["역사", "트레킹"],
+      "imageUrl": null,
+      "tags": [
+        "역사",
+        "트레킹"
+      ],
       "shortDesc": "조선시대 축조된 산성. 성벽을 따라 걷는 둘레길이 완만하게 이어진다.",
       "congestion": "한적",
       "congestionLevel": "quiet",
@@ -419,7 +489,11 @@
       "name": "영덕 블루로드",
       "region": "영덕군",
       "icon": "🌊",
-      "tags": ["자연", "트레킹"],
+      "imageUrl": null,
+      "tags": [
+        "자연",
+        "트레킹"
+      ],
       "shortDesc": "동해 바다를 따라 이어지는 해안 트레킹 코스. 파도 소리를 들으며 걷기 좋다.",
       "congestion": "보통",
       "congestionLevel": "moderate",
@@ -442,7 +516,11 @@
       "name": "포항 내연산 12폭포",
       "region": "포항시",
       "icon": "💦",
-      "tags": ["자연", "트레킹"],
+      "imageUrl": null,
+      "tags": [
+        "자연",
+        "트레킹"
+      ],
       "shortDesc": "12개의 폭포가 이어지는 계곡 트레킹 코스. 여름철 시원한 물줄기가 장관이다.",
       "congestion": "한적",
       "congestionLevel": "quiet",

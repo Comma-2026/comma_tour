@@ -23,6 +23,8 @@ export default function RootLayout() {
         <Stack.Screen name="signup" options={{ headerShown: false }} />
         {/* 로그인 이후 메인 탭 */}
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        {/* 홈 "최근 핀 기록 · 전체 보기" */}
+        <Stack.Screen name="pin-records" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
       <StatusBar style="auto" />
