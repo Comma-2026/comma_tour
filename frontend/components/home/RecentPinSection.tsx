@@ -1,4 +1,5 @@
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useRouter } from 'expo-router';
 
 import { recentPins } from '@/constants/HomeMockData';
 import { RecentPinCard } from './RecentPinCard';
@@ -9,17 +10,14 @@ const HomeTheme = {
 };
 
 export function RecentPinSection() {
+    const router = useRouter();
+
     return (
         <View style={styles.section}>
             <View style={styles.header}>
                 <Text style={styles.title}>최근 핀 기록</Text>
 
-                <TouchableOpacity
-                    activeOpacity={0.7}
-                    onPress={() => {
-                        // TODO: 전체 기록 화면 연결 예정
-                    }}
-                >
+                <TouchableOpacity activeOpacity={0.7} onPress={() => router.push('/pin-records')}>
                     <Text style={styles.moreText}>전체 보기</Text>
                 </TouchableOpacity>
             </View>

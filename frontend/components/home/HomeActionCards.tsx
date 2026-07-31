@@ -1,4 +1,5 @@
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useRouter } from 'expo-router';
 
 import { Brand, Fonts } from '@/constants/theme';
 
@@ -10,8 +11,10 @@ const HomeTheme = {
 };
 
 export function HomeActionCards() {
+    const router = useRouter();
+
     const handleRandomPress = () => {
-        Alert.alert('준비 중', '쉼표 뽑기 기능은 곧 연결될 예정이에요.');
+        router.push('/pindraw');
     };
 
     const handleSearchPress = () => {
