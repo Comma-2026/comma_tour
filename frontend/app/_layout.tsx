@@ -25,6 +25,8 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         {/* 홈 "최근 핀 기록 · 전체 보기" */}
         <Stack.Screen name="pin-records" options={{ headerShown: false }} />
+        {/* 홈 설정 아이콘에서 진입하는 마이페이지 */}
+        <Stack.Screen name="mypage" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
       <StatusBar style="auto" />
