@@ -25,6 +25,8 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         {/* 홈 "최근 핀 기록 · 전체 보기" */}
         <Stack.Screen name="pin-records" options={{ headerShown: false }} />
+        {/* 다이어리 일기 작성/수정 */}
+        <Stack.Screen name="diary-write" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
       <StatusBar style="auto" />
