@@ -12,6 +12,7 @@ import base64
 import binascii
 import uuid
 from datetime import datetime, timezone
+from functools import wraps
 
 from diary import diary_model
 
@@ -23,6 +24,28 @@ class DiaryError(Exception):
         super().__init__(message)
         self.message = message
         self.status_code = status_code
+
+
+def _storage_guard(fn):
+    """저장소(json/mysql) 접근 중 예기치 못한 예외를 DiaryError(500)로 변환한다.
+
+    이렇게 해야 MySQL 연결 실패 같은 오류가 raw 500(HTML)이 아니라 JSON 메시지로 내려가,
+    프론트가 "서버에 연결할 수 없습니다" 대신 실제 원인을 보여줄 수 있다.
+    """
+
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        try:
+            return fn(*args, **kwargs)
+        except DiaryError:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            raise DiaryError(
+                f"일기 저장소 처리 중 오류입니다. MySQL 연결/비밀번호(.env) 설정을 확인하세요: {exc}",
+                500,
+            ) from exc
+
+    return wrapper
 
 
 def _now_iso() -> str:
@@ -57,6 +80,7 @@ def _decode_photo(payload: dict) -> tuple[bytes | None, str | None]:
     return photo_bytes, mime or "image/jpeg"
 
 
+@_storage_guard
 def list_diaries() -> list[dict]:
     """작성된 일기 전체를 최근 작성 순으로 반환."""
     return sorted(
@@ -66,14 +90,17 @@ def list_diaries() -> list[dict]:
     )
 
 
+@_storage_guard
 def get_diary(pin_id: str) -> dict | None:
     return diary_model.get_diary_by_pin(pin_id)
 
 
+@_storage_guard
 def get_photo(pin_id: str) -> tuple[bytes, str] | None:
     return diary_model.get_photo(pin_id)
 
 
+@_storage_guard
 def create_diary(payload: dict) -> dict:
     """핀과 연결된 일기를 생성한다. 같은 핀에 이미 일기가 있으면 수정으로 처리한다."""
     pin_id = _clean(payload.get("pin_id"))
@@ -109,6 +136,7 @@ def create_diary(payload: dict) -> dict:
     return diary_model.create_diary(diary)
 
 
+@_storage_guard
 def update_diary(pin_id: str, payload: dict) -> dict:
     """기존 일기의 제목/내용(+ 새 사진이 올라왔으면 사진)을 수정한다."""
     content = _clean(payload.get("content"))
