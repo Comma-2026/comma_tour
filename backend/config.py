@@ -55,5 +55,18 @@ class Config:
     # (일일 트래픽 1000회 제한 보호용 — 요청마다 실제 API를 다시 부르지 않도록)
     SPOT_CACHE_TTL_SECONDS = int(os.getenv("SPOT_CACHE_TTL_SECONDS", "3600"))
 
+    # --- 다이어리 저장 백엔드 ---
+    #   json  : diaries_data.json 파일 (기본, DB 불필요)
+    #   mysql : MySQL 데이터베이스 (일기 내용 + 사진을 한 행에 저장)
+    DIARY_MODE = os.getenv("DIARY_MODE", "json").lower()
+
+    # --- MySQL 접속 (DIARY_MODE=mysql 일 때 사용) ---
+    # DB와 테이블은 첫 요청 시 자동 생성된다(CREATE DATABASE/TABLE IF NOT EXISTS).
+    MYSQL_HOST = os.getenv("MYSQL_HOST", "localhost")
+    MYSQL_PORT = int(os.getenv("MYSQL_PORT", "3306"))
+    MYSQL_USER = os.getenv("MYSQL_USER", "root")
+    MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "")
+    MYSQL_DB = os.getenv("MYSQL_DB", "comma_tour")
+
 
 config = Config()
