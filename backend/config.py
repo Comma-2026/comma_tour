@@ -15,6 +15,10 @@ class Config:
     FLASK_PORT = int(os.getenv("FLASK_PORT", "5000"))
     FLASK_DEBUG = os.getenv("FLASK_DEBUG", "true").lower() == "true"
 
+    # 로그인 토큰 서명 키. 이 값이 바뀌면 기존 토큰은 모두 무효가 된다(전원 재로그인).
+    # 운영에서는 반드시 .env의 SECRET_KEY로 길고 무작위한 값을 지정할 것.
+    SECRET_KEY = os.getenv("SECRET_KEY", "dev-insecure-secret-change-me")
+
     # --- LDAP 동작 모드 ---
     #   mock : ldap3 내장 in-memory 서버 (Docker 불필요, 기본값)
     #   real : 실제 LDAP 서버(docker-compose의 OpenLDAP 등)에 연결
