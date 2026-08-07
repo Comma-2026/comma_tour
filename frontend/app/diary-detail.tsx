@@ -12,9 +12,10 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { diaryPhotoUrl, fetchDiaryByPin } from '@/api/diary';
+import { diaryPhotoSource, fetchDiaryByPin } from '@/api/diary';
 import { Brand, Fonts } from '@/constants/theme';
 import type { Diary } from '@/types/diary';
+import { getToken } from '@/utils/authStorage';
 
 const ScreenTheme = {
   background: '#f9f8f2',
@@ -42,16 +43,18 @@ export default function DiaryDetailScreen() {
   const { pinId, contentId, placeName, region, visitedAt } = params;
 
   const [diary, setDiary] = useState<Diary | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // 화면에 들어올 때마다(수정 후 돌아올 때 포함) 최신 일기를 다시 불러온다.
+  // 화면에 들어올 때마다(수정 후 돌아올 때 포함) 최신 일기 + 토큰을 다시 불러온다.
   useFocusEffect(
     useCallback(() => {
       let active = true;
       setLoading(true);
-      fetchDiaryByPin(pinId).then((result) => {
+      Promise.all([fetchDiaryByPin(pinId), getToken()]).then(([result, savedToken]) => {
         if (!active) return;
         setDiary(result);
+        setToken(savedToken);
         setLoading(false);
       });
       return () => {
@@ -99,7 +102,7 @@ export default function DiaryDetailScreen() {
 
           {diary.has_photo && (
             <Image
-              source={{ uri: diaryPhotoUrl(pinId) }}
+              source={diaryPhotoSource(pinId, token)}
               style={styles.photo}
               contentFit="cover"
               transition={150}

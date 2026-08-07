@@ -16,8 +16,9 @@ import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { createDiary, diaryPhotoUrl, fetchDiaryByPin } from '@/api/diary';
+import { createDiary, diaryPhotoSource, fetchDiaryByPin } from '@/api/diary';
 import { Brand, Fonts } from '@/constants/theme';
+import { getToken } from '@/utils/authStorage';
 
 const ScreenTheme = {
   background: '#f9f8f2',
@@ -56,9 +57,12 @@ export default function DiaryWriteScreen() {
   const [newPhotoUri, setNewPhotoUri] = useState<string | null>(null);
   const [newPhotoBase64, setNewPhotoBase64] = useState<string | null>(null);
   const [newPhotoMime, setNewPhotoMime] = useState<string | null>(null);
+  // 저장된 사진 미리보기 요청에 붙일 로그인 토큰.
+  const [token, setToken] = useState<string | null>(null);
 
-  // 이미 작성된 일기가 있으면 불러와 미리 채운다(수정 모드).
+  // 이미 작성된 일기가 있으면 불러와 미리 채운다(수정 모드) + 토큰 로드.
   useEffect(() => {
+    getToken().then(setToken);
     if (!pinId) {
       setLoading(false);
       return;
@@ -132,8 +136,12 @@ export default function DiaryWriteScreen() {
     }
   };
 
-  // 미리보기에 쓸 이미지: 새로 고른 사진 우선, 없으면 저장된 서버 사진.
-  const previewUri = newPhotoUri ?? (hasSavedPhoto ? diaryPhotoUrl(pinId) : null);
+  // 미리보기에 쓸 이미지: 새로 고른 사진(로컬) 우선, 없으면 저장된 서버 사진(토큰 필요).
+  const previewSource = newPhotoUri
+    ? { uri: newPhotoUri }
+    : hasSavedPhoto
+      ? diaryPhotoSource(pinId, token)
+      : null;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -170,10 +178,10 @@ export default function DiaryWriteScreen() {
             </View>
 
             <Text style={styles.fieldLabel}>사진</Text>
-            {previewUri ? (
+            {previewSource ? (
               <View style={styles.photoBox}>
                 <Image
-                  source={{ uri: previewUri }}
+                  source={previewSource}
                   style={styles.photo}
                   contentFit="cover"
                   transition={150}
