@@ -1,5 +1,6 @@
 import { API_BASE_URL } from '@/constants/api';
 import type { Diary } from '@/types/diary';
+import { getToken } from '@/utils/authStorage';
 
 /** 요청이 응답 없이 멈추는 것을 막기 위한 타임아웃(ms) */
 const REQUEST_TIMEOUT = 10000;
@@ -21,14 +22,32 @@ export function diaryPhotoUrl(pinId: string): string {
   return `${API_BASE_URL}/api/diary/pin/${encodeURIComponent(pinId)}/photo`;
 }
 
+/**
+ * expo-image에 넘길 사진 소스(토큰 헤더 포함).
+ * 사진 엔드포인트도 계정별로 잠겨 있어 Authorization 헤더가 필요하다.
+ */
+export function diaryPhotoSource(pinId: string, token: string | null) {
+  return {
+    uri: diaryPhotoUrl(pinId),
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  };
+}
+
 export type DiaryResult = { success: boolean; message?: string; diary?: Diary };
 
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T | null> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
 
+  // 모든 일기 요청에 로그인 토큰을 붙인다(서버가 토큰에서 소유자를 정함).
+  const token = await getToken();
+  const headers = {
+    ...(init?.headers ?? {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+
   try {
-    const res = await fetch(`${API_BASE_URL}${path}`, { ...init, signal: controller.signal });
+    const res = await fetch(`${API_BASE_URL}${path}`, { ...init, headers, signal: controller.signal });
     return (await res.json().catch(() => null)) as T | null;
   } catch {
     return null;
