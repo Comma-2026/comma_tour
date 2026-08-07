@@ -82,7 +82,7 @@ export default function DiaryWriteScreen() {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
-      allowsEditing: true,
+      // allowsEditing를 켜면 '자르기'를 눌러야만 적용됨 → 끄고 고른 즉시 적용되게 한다.
       quality: 0.5, // 용량 절감(base64 전송/DB 저장 부담 완화)
       base64: true,
     });
@@ -152,7 +152,7 @@ export default function DiaryWriteScreen() {
       ) : (
         <KeyboardAvoidingView
           style={styles.flex}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
           <ScrollView
             contentContainerStyle={styles.content}
