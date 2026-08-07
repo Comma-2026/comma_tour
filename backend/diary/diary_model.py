@@ -7,12 +7,15 @@
 - "mysql": MySQL 데이터베이스. 일기 내용과 사진(LONGBLOB)을 한 행에 함께 저장한다.
   DB·테이블은 첫 요청 시 자동 생성한다(CREATE DATABASE/TABLE IF NOT EXISTS).
 
+일기는 **계정별 소유**다. 모든 조회/저장은 user_email로 스코프되며, 식별키는
+(user_email, pin_id) 조합이다 — 다른 사용자의 일기는 절대 보이거나 덮어써지지 않는다.
+
 서비스 계층은 아래 고수준 함수만 호출한다(모드와 무관):
-- get_all_diaries() -> list[dict]         : 사진 바이트를 뺀 공개 dict 목록
-- get_diary_by_pin(pin_id) -> dict | None : 공개 dict 1개
-- get_photo(pin_id) -> (bytes, mime) | None : 사진 원본 바이트
-- create_diary(diary) -> dict             : 생성 후 공개 dict
-- update_diary(pin_id, fields) -> dict|None: 수정 후 공개 dict
+- get_all_diaries(user_email) -> list[dict]         : 그 사용자의 공개 dict 목록
+- get_diary_by_pin(user_email, pin_id) -> dict|None : 공개 dict 1개
+- get_photo(user_email, pin_id) -> (bytes, mime)|None: 사진 원본 바이트
+- create_diary(diary) -> dict                        : 생성 후 공개 dict (diary에 user_email 포함)
+- update_diary(user_email, pin_id, fields) -> dict|None: 수정 후 공개 dict
 
 저장용 dict(create_diary 인자)는 photo_bytes(bytes|None) + photo_mime(str|None)를 포함하고,
 공개 dict은 사진 바이트 대신 has_photo(bool)만 담는다(목록 응답이 무거워지지 않도록).
@@ -26,7 +29,7 @@ import threading
 
 from config import config
 
-# 공개 dict(프론트로 내려가는 응답)에 담는 필드 — 사진 바이트는 제외한다.
+# 공개 dict(프론트로 내려가는 응답)에 담는 필드 — 사진 바이트/소유자 이메일은 제외한다.
 _PUBLIC_KEYS = [
     "id",
     "pin_id",
@@ -73,17 +76,24 @@ def _json_public(entry: dict) -> dict:
     return pub
 
 
-def _json_get_all() -> list[dict]:
-    return [_json_public(e) for e in _json_read()]
+def _json_find(diaries: list[dict], user_email: str, pin_id: str) -> dict | None:
+    return next(
+        (e for e in diaries if e.get("user_email") == user_email and e.get("pin_id") == pin_id),
+        None,
+    )
 
 
-def _json_get_by_pin(pin_id: str) -> dict | None:
-    entry = next((e for e in _json_read() if e.get("pin_id") == pin_id), None)
+def _json_get_all(user_email: str) -> list[dict]:
+    return [_json_public(e) for e in _json_read() if e.get("user_email") == user_email]
+
+
+def _json_get_by_pin(user_email: str, pin_id: str) -> dict | None:
+    entry = _json_find(_json_read(), user_email, pin_id)
     return _json_public(entry) if entry else None
 
 
-def _json_get_photo(pin_id: str) -> tuple[bytes, str] | None:
-    entry = next((e for e in _json_read() if e.get("pin_id") == pin_id), None)
+def _json_get_photo(user_email: str, pin_id: str) -> tuple[bytes, str] | None:
+    entry = _json_find(_json_read(), user_email, pin_id)
     if not entry or not entry.get("photo_base64"):
         return None
     return base64.b64decode(entry["photo_base64"]), entry.get("photo_mime") or "image/jpeg"
@@ -91,6 +101,7 @@ def _json_get_photo(pin_id: str) -> tuple[bytes, str] | None:
 
 def _json_create(diary: dict) -> dict:
     entry = {k: diary.get(k) for k in _PUBLIC_KEYS}
+    entry["user_email"] = diary["user_email"]
     photo_bytes = diary.get("photo_bytes")
     entry["photo_base64"] = base64.b64encode(photo_bytes).decode() if photo_bytes else None
     entry["photo_mime"] = diary.get("photo_mime")
@@ -101,22 +112,21 @@ def _json_create(diary: dict) -> dict:
     return _json_public(entry)
 
 
-def _json_update(pin_id: str, fields: dict) -> dict | None:
+def _json_update(user_email: str, pin_id: str, fields: dict) -> dict | None:
     diaries = _json_read()
-    for entry in diaries:
-        if entry.get("pin_id") != pin_id:
-            continue
-        entry["title"] = fields.get("title", entry.get("title"))
-        entry["content"] = fields.get("content", entry.get("content"))
-        entry["updated_at"] = fields.get("updated_at", entry.get("updated_at"))
-        # 사진은 새로 올라온 경우에만 교체한다(없으면 기존 사진 유지).
-        if "photo_bytes" in fields:
-            pb = fields["photo_bytes"]
-            entry["photo_base64"] = base64.b64encode(pb).decode() if pb else None
-            entry["photo_mime"] = fields.get("photo_mime")
-        _json_write(diaries)
-        return _json_public(entry)
-    return None
+    entry = _json_find(diaries, user_email, pin_id)
+    if entry is None:
+        return None
+    entry["title"] = fields.get("title", entry.get("title"))
+    entry["content"] = fields.get("content", entry.get("content"))
+    entry["updated_at"] = fields.get("updated_at", entry.get("updated_at"))
+    # 사진은 새로 올라온 경우에만 교체한다(없으면 기존 사진 유지).
+    if "photo_bytes" in fields:
+        pb = fields["photo_bytes"]
+        entry["photo_base64"] = base64.b64encode(pb).decode() if pb else None
+        entry["photo_mime"] = fields.get("photo_mime")
+    _json_write(diaries)
+    return _json_public(entry)
 
 
 # ══════════════════════════ mysql 백엔드 ══════════════════════════
@@ -148,7 +158,8 @@ def _mysql_connect(with_db: bool = True):
 _CREATE_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS diaries (
     id          VARCHAR(64)  PRIMARY KEY,
-    pin_id      VARCHAR(64)  NOT NULL UNIQUE,
+    user_email  VARCHAR(255) NOT NULL,
+    pin_id      VARCHAR(64)  NOT NULL,
     content_id  VARCHAR(64)  NULL,
     place_name  VARCHAR(255) NOT NULL,
     region      VARCHAR(100) NULL,
@@ -158,13 +169,18 @@ CREATE TABLE IF NOT EXISTS diaries (
     photo       LONGBLOB     NULL,
     photo_mime  VARCHAR(60)  NULL,
     created_at  VARCHAR(40)  NOT NULL,
-    updated_at  VARCHAR(40)  NOT NULL
+    updated_at  VARCHAR(40)  NOT NULL,
+    UNIQUE KEY uq_user_pin (user_email, pin_id)
 ) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci
 """
 
 
 def _mysql_ensure_schema() -> None:
-    """DB와 테이블을 한 번만 생성한다(이미 있으면 무시)."""
+    """DB와 테이블을 한 번만 생성한다(이미 있으면 무시).
+
+    소유자(user_email) 컬럼이 없는 구버전 테이블이 있으면 초기화 후 재생성한다.
+    (계정별 소유 도입 — 기존 dev 데이터는 리셋해도 된다고 확인받음.)
+    """
     global _schema_ready
     if _schema_ready:
         return
@@ -182,26 +198,36 @@ def _mysql_ensure_schema() -> None:
             conn.commit()
         finally:
             conn.close()
-        # 2) 테이블 생성
+        # 2) 테이블 생성 + 구버전 스키마 마이그레이션
         conn = _mysql_connect()
         try:
             with conn.cursor() as cur:
                 cur.execute(_CREATE_TABLE_SQL)
+                cur.execute("SHOW COLUMNS FROM diaries LIKE 'user_email'")
+                if cur.fetchone() is None:
+                    # 구버전(소유자 없음) 테이블 → 초기화 후 새 스키마로 재생성
+                    cur.execute("DROP TABLE diaries")
+                    cur.execute(_CREATE_TABLE_SQL)
             conn.commit()
         finally:
             conn.close()
         _schema_ready = True
 
 
-def _mysql_get_all() -> list[dict]:
+_LIST_COLS = (
+    "id, pin_id, content_id, place_name, region, title, content, "
+    "visited_at, created_at, updated_at, (photo IS NOT NULL) AS has_photo"
+)
+
+
+def _mysql_get_all(user_email: str) -> list[dict]:
     _mysql_ensure_schema()
     conn = _mysql_connect()
     try:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT id, pin_id, content_id, place_name, region, title, content, "
-                "visited_at, created_at, updated_at, (photo IS NOT NULL) AS has_photo "
-                "FROM diaries ORDER BY created_at DESC"
+                f"SELECT {_LIST_COLS} FROM diaries WHERE user_email = %s ORDER BY created_at DESC",
+                (user_email,),
             )
             rows = cur.fetchall()
     finally:
@@ -211,16 +237,14 @@ def _mysql_get_all() -> list[dict]:
     return rows
 
 
-def _mysql_get_by_pin(pin_id: str) -> dict | None:
+def _mysql_get_by_pin(user_email: str, pin_id: str) -> dict | None:
     _mysql_ensure_schema()
     conn = _mysql_connect()
     try:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT id, pin_id, content_id, place_name, region, title, content, "
-                "visited_at, created_at, updated_at, (photo IS NOT NULL) AS has_photo "
-                "FROM diaries WHERE pin_id = %s",
-                (pin_id,),
+                f"SELECT {_LIST_COLS} FROM diaries WHERE user_email = %s AND pin_id = %s",
+                (user_email, pin_id),
             )
             row = cur.fetchone()
     finally:
@@ -230,12 +254,15 @@ def _mysql_get_by_pin(pin_id: str) -> dict | None:
     return row
 
 
-def _mysql_get_photo(pin_id: str) -> tuple[bytes, str] | None:
+def _mysql_get_photo(user_email: str, pin_id: str) -> tuple[bytes, str] | None:
     _mysql_ensure_schema()
     conn = _mysql_connect()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT photo, photo_mime FROM diaries WHERE pin_id = %s", (pin_id,))
+            cur.execute(
+                "SELECT photo, photo_mime FROM diaries WHERE user_email = %s AND pin_id = %s",
+                (user_email, pin_id),
+            )
             row = cur.fetchone()
     finally:
         conn.close()
@@ -251,11 +278,12 @@ def _mysql_create(diary: dict) -> dict:
         with conn.cursor() as cur:
             cur.execute(
                 "INSERT INTO diaries "
-                "(id, pin_id, content_id, place_name, region, title, content, "
+                "(id, user_email, pin_id, content_id, place_name, region, title, content, "
                 "visited_at, photo, photo_mime, created_at, updated_at) "
-                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                 (
                     diary["id"],
+                    diary["user_email"],
                     diary["pin_id"],
                     diary.get("content_id"),
                     diary["place_name"],
@@ -272,48 +300,57 @@ def _mysql_create(diary: dict) -> dict:
         conn.commit()
     finally:
         conn.close()
-    return _mysql_get_by_pin(diary["pin_id"])
+    return _mysql_get_by_pin(diary["user_email"], diary["pin_id"])
 
 
-def _mysql_update(pin_id: str, fields: dict) -> dict | None:
+def _mysql_update(user_email: str, pin_id: str, fields: dict) -> dict | None:
     _mysql_ensure_schema()
     set_cols = ["title = %s", "content = %s", "updated_at = %s"]
     values: list = [fields.get("title"), fields.get("content"), fields.get("updated_at")]
     if "photo_bytes" in fields:
         set_cols += ["photo = %s", "photo_mime = %s"]
         values += [fields["photo_bytes"], fields.get("photo_mime")]
-    values.append(pin_id)
+    values += [user_email, pin_id]
 
     conn = _mysql_connect()
     try:
         with conn.cursor() as cur:
             affected = cur.execute(
-                f"UPDATE diaries SET {', '.join(set_cols)} WHERE pin_id = %s", values
+                f"UPDATE diaries SET {', '.join(set_cols)} WHERE user_email = %s AND pin_id = %s",
+                values,
             )
         conn.commit()
     finally:
         conn.close()
     if not affected:
         return None
-    return _mysql_get_by_pin(pin_id)
+    return _mysql_get_by_pin(user_email, pin_id)
 
 
 # ─────────────────────────── 공개 API(모드 분기) ───────────────────────────
 
 
-def get_all_diaries() -> list[dict]:
+def get_all_diaries(user_email: str) -> list[dict]:
     with _LOCK:
-        return _mysql_get_all() if _is_mysql() else _json_get_all()
+        return _mysql_get_all(user_email) if _is_mysql() else _json_get_all(user_email)
 
 
-def get_diary_by_pin(pin_id: str) -> dict | None:
+def get_diary_by_pin(user_email: str, pin_id: str) -> dict | None:
     with _LOCK:
-        return _mysql_get_by_pin(pin_id) if _is_mysql() else _json_get_by_pin(pin_id)
+        return (
+            _mysql_get_by_pin(user_email, pin_id)
+            if _is_mysql()
+            else _json_get_by_pin(user_email, pin_id)
+        )
 
 
-def get_photo(pin_id: str) -> tuple[bytes, str] | None:
+def get_photo(user_email: str, pin_id: str) -> tuple[bytes, str] | None:
     with _LOCK:
-        return _mysql_get_photo(pin_id) if _is_mysql() else _json_get_photo(pin_id)
+        return (
+            _mysql_get_photo(user_email, pin_id)
+            if _is_mysql()
+            else _json_get_photo(user_email, pin_id)
+        )
 
 
 def create_diary(diary: dict) -> dict:
@@ -321,6 +358,10 @@ def create_diary(diary: dict) -> dict:
         return _mysql_create(diary) if _is_mysql() else _json_create(diary)
 
 
-def update_diary(pin_id: str, fields: dict) -> dict | None:
+def update_diary(user_email: str, pin_id: str, fields: dict) -> dict | None:
     with _LOCK:
-        return _mysql_update(pin_id, fields) if _is_mysql() else _json_update(pin_id, fields)
+        return (
+            _mysql_update(user_email, pin_id, fields)
+            if _is_mysql()
+            else _json_update(user_email, pin_id, fields)
+        )
