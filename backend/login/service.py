@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import re
 
+import auth_token
 from login import model
 
 # 간단한 이메일 형식 검증
@@ -65,4 +66,5 @@ def login(email: str, password: str) -> dict:
     if not ok:
         raise AuthError("이메일 또는 비밀번호가 올바르지 않습니다.", 401)
 
-    return {"email": email}
+    # 로그인 성공 → 이메일이 담긴 서명 토큰을 함께 반환한다(이후 일기 요청의 소유자 식별용).
+    return {"email": email, "token": auth_token.issue_token(email)}
