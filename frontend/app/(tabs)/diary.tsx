@@ -74,9 +74,10 @@ export default function DiaryScreen() {
         });
     };
 
-    const goEdit = (diary: Diary) => {
+    // 작성된 일기는 읽기 전용 상세 화면으로 연다(수정은 상세 화면의 '수정' 버튼으로만).
+    const goDetail = (diary: Diary) => {
         router.push({
-            pathname: '/diary-write',
+            pathname: '/diary-detail',
             params: {
                 pinId: diary.pin_id,
                 contentId: diary.content_id ?? '',
@@ -128,7 +129,7 @@ export default function DiaryScreen() {
                                     key={diary.id}
                                     style={styles.diaryCard}
                                     activeOpacity={0.82}
-                                    onPress={() => goEdit(diary)}
+                                    onPress={() => goDetail(diary)}
                                 >
                                     <View style={styles.diaryBody}>
                                         <View style={styles.cardHeaderRow}>
