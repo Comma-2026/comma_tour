@@ -5,6 +5,7 @@ from flask_cors import CORS
 from config import config
 from login.route import login_bp
 from spots.spots_routes import spots_bp
+from weather.routes import weather_bp
 
 
 def create_app() -> Flask:
@@ -13,6 +14,7 @@ def create_app() -> Flask:
 
     app.register_blueprint(login_bp)
     app.register_blueprint(spots_bp)
+    app.register_blueprint(weather_bp)
 
     @app.get("/api/health")
     def health():
