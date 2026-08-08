@@ -92,8 +92,29 @@ export default function MyPageScreen() {
         router.replace('/(tabs)/home');
     };
 
-    const handleMenuPress = (label: string) => {
-        Alert.alert('준비 중', `${label} 기능은 추후 연결될 예정이에요.`);
+    const handleMenuPress = (menu: AccountMenu) => {
+        if (menu.id === 'logout') {
+            Alert.alert(
+                '로그아웃',
+                '로그아웃하시겠습니까?',
+                [
+                    {
+                        text: '취소',
+                        style: 'cancel',
+                    },
+                    {
+                        text: '로그아웃',
+                        style: 'destructive',
+                        onPress: () => {
+                            router.replace('/login');
+                        },
+                    },
+                ],
+            );
+            return;
+        }
+
+        Alert.alert('준비 중', `${menu.label} 기능은 추후 연결될 예정이에요.`);
     };
 
     const loadWeather = useCallback(async () => {
@@ -254,7 +275,7 @@ export default function MyPageScreen() {
                                 index < ACCOUNT_MENUS.length - 1 && styles.menuDivider,
                             ]}
                             activeOpacity={0.7}
-                            onPress={() => handleMenuPress(menu.label)}
+                            onPress={() => handleMenuPress(menu)}
                         >
                             <Ionicons name={menu.icon} size={19} color={ScreenTheme.greenDeep} />
                             <Text style={styles.menuLabel}>{menu.label}</Text>
