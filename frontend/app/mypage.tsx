@@ -1,19 +1,22 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import * as Location from 'expo-location';
+import { useCallback, useEffect, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { getWeather } from '@/api/weather';
 import { Brand, Fonts } from '@/constants/theme';
-
-type TravelRecord = {
-    id: string;
-    placeName: string;
-    region: string;
-    date: string;
-    mood: string;
-    description: string;
-    icon: keyof typeof Ionicons.glyphMap;
-};
+import { useCurrentLocation } from '@/hooks/use-current-location';
+import type { Weather } from '@/types/weather';
 
 type AccountMenu = {
     id: 'profile' | 'notifications' | 'logout';
@@ -21,39 +24,11 @@ type AccountMenu = {
     icon: keyof typeof Ionicons.glyphMap;
 };
 
-// TODO: 실제 API 연동 시 아래 목업 데이터를 서버 응답으로 교체한다.
+// TODO: 프로필 API 연동 시 서버 응답으로 교체한다.
 const PROFILE_MOCK = {
     name: '쉼표 여행자',
     introduction: '조용한 자연과 느긋한 여행을 좋아해요.',
 };
-
-const WEATHER_MOCK = {
-    location: '경상북도 안동시',
-    temperature: 28,
-    condition: '맑음',
-    precipitationProbability: 20,
-};
-
-const TRAVEL_RECORDS_MOCK: TravelRecord[] = [
-    {
-        id: 'record-1',
-        placeName: '안동 하회마을',
-        region: '안동시',
-        date: '2026.07.20',
-        mood: '평온했어요',
-        description: '천천히 골목을 걸으며 오래 머물고 싶었던 하루',
-        icon: 'leaf-outline',
-    },
-    {
-        id: 'record-2',
-        placeName: '주왕산 국립공원',
-        region: '청송군',
-        date: '2026.06.28',
-        mood: '상쾌했어요',
-        description: '초록빛 산책길에서 충분히 쉬어간 여행',
-        icon: 'trail-sign-outline',
-    },
-];
 
 const ACCOUNT_MENUS: AccountMenu[] = [
     { id: 'profile', label: '개인정보 및 프로필 수정', icon: 'person-outline' },
@@ -66,11 +41,52 @@ const ScreenTheme = {
     card: '#ffffff',
     text: '#1A1A1A',
     greenDeep: '#1a3a2a',
-    greenSoft: '#eef5ee',
 };
+
+const CARD_SHADOW = {
+    shadowColor: '#000',
+    shadowOpacity: 0.045,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 2,
+};
+
+function formatTemperature(value: number | null) {
+    return value === null ? '-' : Math.round(value).toString();
+}
+
+function getWeatherIconName(weather: Weather | null): keyof typeof Ionicons.glyphMap {
+    if (!weather) {
+        return 'partly-sunny-outline';
+    }
+
+    if (weather.precipitationType === '비' || weather.precipitationType === '소나기') {
+        return 'rainy-outline';
+    }
+
+    if (weather.precipitationType === '눈' || weather.precipitationType === '비/눈') {
+        return 'snow-outline';
+    }
+
+    if (weather.sky === '맑음') {
+        return 'sunny-outline';
+    }
+
+    if (weather.sky === '흐림') {
+        return 'cloud-outline';
+    }
+
+    return 'partly-sunny-outline';
+}
 
 export default function MyPageScreen() {
     const router = useRouter();
+    const { refreshLocation } = useCurrentLocation();
+
+    const [weather, setWeather] = useState<Weather | null>(null);
+    const [weatherLoading, setWeatherLoading] = useState(true);
+    const [weatherError, setWeatherError] = useState<string | null>(null);
+    const [locationName, setLocationName] = useState('현재 위치');
 
     const handleBackToHome = () => {
         router.replace('/(tabs)/home');
@@ -79,6 +95,60 @@ export default function MyPageScreen() {
     const handleMenuPress = (label: string) => {
         Alert.alert('준비 중', `${label} 기능은 추후 연결될 예정이에요.`);
     };
+
+    const loadWeather = useCallback(async () => {
+        try {
+            setWeatherLoading(true);
+            setWeatherError(null);
+
+            const currentLocation = await refreshLocation();
+
+            if (!currentLocation) {
+                setWeather(null);
+                setWeatherError('현재 위치를 가져오지 못했습니다.');
+                return;
+            }
+
+            const [weatherData, addresses] = await Promise.all([
+                getWeather(
+                    currentLocation.latitude,
+                    currentLocation.longitude,
+                ),
+                Location.reverseGeocodeAsync({
+                    latitude: currentLocation.latitude,
+                    longitude: currentLocation.longitude,
+                }),
+            ]);
+
+            setWeather(weatherData);
+
+            const address = addresses[0];
+
+            if (address) {
+                const locationParts = [
+                    address.region,
+                    address.city,
+                    address.district,
+                ]
+                    .filter((value): value is string => Boolean(value))
+                    .filter((value, index, array) => array.indexOf(value) === index);
+
+                if (locationParts.length > 0) {
+                    setLocationName(locationParts.join(' '));
+                }
+            }
+        } catch (error) {
+            console.error('[MyPage] 날씨 조회 실패:', error);
+            setWeather(null);
+            setWeatherError('날씨 정보를 가져오지 못했습니다.');
+        } finally {
+            setWeatherLoading(false);
+        }
+    }, [refreshLocation]);
+
+    useEffect(() => {
+        loadWeather();
+    }, [loadWeather]);
 
     return (
         <SafeAreaView style={styles.safe} edges={['top']}>
@@ -92,7 +162,9 @@ export default function MyPageScreen() {
                 >
                     <Ionicons name="chevron-back" size={24} color={ScreenTheme.text} />
                 </TouchableOpacity>
+
                 <Text style={styles.headerTitle}>마이페이지</Text>
+
                 <View style={styles.headerSide} />
             </View>
 
@@ -101,28 +173,11 @@ export default function MyPageScreen() {
                 contentContainerStyle={styles.content}
                 showsVerticalScrollIndicator={false}
             >
-                <View style={styles.weatherCard}>
-                    <View style={styles.weatherIconBox}>
-                        <Ionicons name="sunny-outline" size={28} color={ScreenTheme.card} />
-                    </View>
-                    <View style={styles.weatherContent}>
-                        <Text style={styles.weatherLocation} numberOfLines={1}>
-                            오늘의 날씨 · {WEATHER_MOCK.location}
-                        </Text>
-                        <View style={styles.weatherRow}>
-                            <Text style={styles.weatherTemperature}>{WEATHER_MOCK.temperature}°</Text>
-                            <Text style={styles.weatherCondition}>{WEATHER_MOCK.condition}</Text>
-                        </View>
-                        <Text style={styles.weatherDetail}>
-                            강수확률 {WEATHER_MOCK.precipitationProbability}%
-                        </Text>
-                    </View>
-                </View>
-
                 <View style={styles.profileCard}>
                     <View style={styles.profileIconBox}>
                         <Ionicons name="person" size={32} color={ScreenTheme.card} />
                     </View>
+
                     <View style={styles.profileContent}>
                         <Text style={styles.profileName} numberOfLines={1}>
                             {PROFILE_MOCK.name}
@@ -133,38 +188,63 @@ export default function MyPageScreen() {
                     </View>
                 </View>
 
-                <SectionHeader title="나의 여행 기록" />
-                <View style={styles.listGap}>
-                    {TRAVEL_RECORDS_MOCK.map((record) => (
-                        <TouchableOpacity
-                            key={record.id}
-                            style={styles.recordCard}
-                            activeOpacity={0.82}
-                            onPress={() => handleMenuPress('여행 기록 상세')}
-                        >
-                            <View style={styles.recordImagePlaceholder}>
-                                <Ionicons name={record.icon} size={26} color={ScreenTheme.card} />
-                            </View>
-                            <View style={styles.recordContent}>
-                                <View style={styles.titleRow}>
-                                    <Text style={styles.cardTitle} numberOfLines={1}>
-                                        {record.placeName}
+                <View style={styles.weatherCard}>
+                    <View style={styles.weatherIconBox}>
+                        {weatherLoading ? (
+                            <ActivityIndicator color={ScreenTheme.card} />
+                        ) : (
+                            <Ionicons
+                                name={getWeatherIconName(weather)}
+                                size={28}
+                                color={ScreenTheme.card}
+                            />
+                        )}
+                    </View>
+
+                    <View style={styles.weatherContent}>
+                        <Text style={styles.weatherLocation} numberOfLines={1}>
+                            오늘의 날씨 · {locationName}
+                        </Text>
+
+                        {weatherLoading ? (
+                            <Text style={styles.weatherLoadingText}>날씨를 불러오는 중...</Text>
+                        ) : weatherError ? (
+                            <>
+                                <Text style={styles.weatherErrorText}>{weatherError}</Text>
+                                <TouchableOpacity
+                                    activeOpacity={0.7}
+                                    onPress={loadWeather}
+                                    accessibilityRole="button"
+                                >
+                                    <Text style={styles.weatherRetryText}>다시 시도</Text>
+                                </TouchableOpacity>
+                            </>
+                        ) : weather ? (
+                            <>
+                                <View style={styles.weatherRow}>
+                                    <Text style={styles.weatherTemperature}>
+                                        {formatTemperature(weather.temperature)}°
                                     </Text>
-                                    <Text style={styles.dateText}>{record.date}</Text>
+                                    <Text style={styles.weatherCondition}>
+                                        {weather.precipitationType &&
+                                            weather.precipitationType !== '없음'
+                                            ? weather.precipitationType
+                                            : weather.sky ?? '날씨 정보 없음'}
+                                    </Text>
                                 </View>
-                                <Text style={styles.regionText}>{record.region}</Text>
-                                <Text style={styles.cardDescription} numberOfLines={2}>
-                                    {record.description}
+
+                                <Text style={styles.weatherDetail}>
+                                    최저 {formatTemperature(weather.minTemperature)}° · 최고{' '}
+                                    {formatTemperature(weather.maxTemperature)}° · 강수확률{' '}
+                                    {weather.precipitationProbability ?? '-'}%
                                 </Text>
-                                <View style={styles.moodChip}>
-                                    <Text style={styles.moodText}>#{record.mood}</Text>
-                                </View>
-                            </View>
-                        </TouchableOpacity>
-                    ))}
+                            </>
+                        ) : null}
+                    </View>
                 </View>
 
                 <SectionHeader title="설정 및 계정" />
+
                 <View style={styles.menuCard}>
                     {ACCOUNT_MENUS.map((menu, index) => (
                         <TouchableOpacity
@@ -190,14 +270,6 @@ export default function MyPageScreen() {
 function SectionHeader({ title }: { title: string }) {
     return <Text style={styles.sectionTitle}>{title}</Text>;
 }
-
-const CARD_SHADOW = {
-    shadowColor: '#000',
-    shadowOpacity: 0.045,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 2,
-};
 
 const styles = StyleSheet.create({
     safe: {
@@ -231,7 +303,41 @@ const styles = StyleSheet.create({
         paddingTop: 12,
         paddingBottom: 48,
     },
+    profileCard: {
+        padding: 18,
+        borderRadius: 20,
+        backgroundColor: ScreenTheme.card,
+        flexDirection: 'row',
+        alignItems: 'center',
+        ...CARD_SHADOW,
+    },
+    profileIconBox: {
+        width: 58,
+        height: 58,
+        borderRadius: 16,
+        backgroundColor: ScreenTheme.greenDeep,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    profileContent: {
+        flex: 1,
+        marginLeft: 14,
+    },
+    profileName: {
+        fontFamily: Fonts.serif,
+        fontSize: 19,
+        fontWeight: '800',
+        color: ScreenTheme.text,
+    },
+    profileIntro: {
+        marginTop: 6,
+        fontSize: 12,
+        lineHeight: 18,
+        color: Brand.muted,
+    },
     weatherCard: {
+        minHeight: 94,
+        marginTop: 14,
         padding: 18,
         borderRadius: 20,
         backgroundColor: ScreenTheme.card,
@@ -278,38 +384,21 @@ const styles = StyleSheet.create({
         fontSize: 10,
         color: Brand.muted,
     },
-    profileCard: {
-        marginTop: 14,
-        padding: 18,
-        borderRadius: 20,
-        backgroundColor: ScreenTheme.card,
-        flexDirection: 'row',
-        alignItems: 'center',
-        ...CARD_SHADOW,
+    weatherLoadingText: {
+        marginTop: 8,
+        fontSize: 12,
+        color: Brand.muted,
     },
-    profileIconBox: {
-        width: 58,
-        height: 58,
-        borderRadius: 16,
-        backgroundColor: ScreenTheme.greenDeep,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    profileContent: {
-        flex: 1,
-        marginLeft: 14,
-    },
-    profileName: {
-        fontFamily: Fonts.serif,
-        fontSize: 19,
-        fontWeight: '800',
+    weatherErrorText: {
+        marginTop: 7,
+        fontSize: 12,
         color: ScreenTheme.text,
     },
-    profileIntro: {
-        marginTop: 6,
-        fontSize: 12,
-        lineHeight: 18,
-        color: Brand.muted,
+    weatherRetryText: {
+        marginTop: 5,
+        fontSize: 11,
+        fontWeight: '700',
+        color: Brand.green,
     },
     sectionTitle: {
         marginTop: 24,
@@ -317,69 +406,6 @@ const styles = StyleSheet.create({
         fontSize: 17,
         fontWeight: '800',
         color: ScreenTheme.text,
-    },
-    listGap: {
-        gap: 10,
-    },
-    recordCard: {
-        minHeight: 112,
-        padding: 12,
-        borderRadius: 16,
-        backgroundColor: ScreenTheme.card,
-        flexDirection: 'row',
-        ...CARD_SHADOW,
-    },
-    recordImagePlaceholder: {
-        width: 76,
-        minHeight: 88,
-        borderRadius: 12,
-        backgroundColor: ScreenTheme.greenDeep,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    recordContent: {
-        flex: 1,
-        marginLeft: 12,
-    },
-    titleRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    cardTitle: {
-        flex: 1,
-        fontSize: 14,
-        fontWeight: '800',
-        color: ScreenTheme.text,
-    },
-    dateText: {
-        marginLeft: 8,
-        fontSize: 10,
-        color: Brand.muted,
-    },
-    regionText: {
-        marginTop: 3,
-        fontSize: 10,
-        fontWeight: '600',
-        color: Brand.muted,
-    },
-    cardDescription: {
-        marginTop: 5,
-        fontSize: 11,
-        lineHeight: 16,
-        color: ScreenTheme.text,
-    },
-    moodChip: {
-        alignSelf: 'flex-start',
-        marginTop: 7,
-        paddingHorizontal: 9,
-        paddingVertical: 4,
-        borderRadius: 999,
-        backgroundColor: ScreenTheme.greenSoft,
-    },
-    moodText: {
-        fontSize: 10,
-        fontWeight: '700',
-        color: Brand.green,
     },
     menuCard: {
         borderRadius: 16,
