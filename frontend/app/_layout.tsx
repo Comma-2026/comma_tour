@@ -1,4 +1,8 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import {
+  DarkTheme,
+  DefaultTheme,
+  ThemeProvider,
+} from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
@@ -29,7 +33,12 @@ export default function RootLayout() {
         <Stack.Screen name="diary-detail" options={{ headerShown: false }} />
         {/* 다이어리 일기 작성/수정 */}
         <Stack.Screen name="diary-write" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+        {/* 홈 설정 아이콘에서 진입하는 마이페이지 */}
+        <Stack.Screen name="mypage" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="modal"
+          options={{ presentation: 'modal', title: 'Modal' }}
+        />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>
