@@ -16,7 +16,7 @@ import { diaryPhotoSource, fetchDiaries } from '@/api/diary';
 import { Brand, Fonts } from '@/constants/theme';
 import type { Diary } from '@/types/diary';
 import type { Pin } from '@/types/pin';
-import { clearToken, getToken } from '@/utils/authStorage';
+import { getToken } from '@/utils/authStorage';
 import { getPins } from '@/utils/pinStorage';
 
 const ScreenTheme = {
@@ -58,11 +58,6 @@ export default function DiaryScreen() {
         }, []),
     );
 
-    const handleLogout = async () => {
-        await clearToken();
-        router.replace('/login');
-    };
-
     // 아직 일기를 쓰지 않은 핀 = 로컬 핀 중 서버에 일기가 없는 것(pin_id 기준). 최신 방문 순.
     const toWritePins = useMemo(() => {
         const writtenPinIds = new Set(diaries.map((d) => d.pin_id));
@@ -101,12 +96,7 @@ export default function DiaryScreen() {
     return (
         <SafeAreaView style={styles.safe} edges={['top']}>
             <View style={styles.header}>
-                <View style={styles.headerRow}>
-                    <Text style={styles.title}>다이어리</Text>
-                    <TouchableOpacity onPress={handleLogout} hitSlop={8}>
-                        <Text style={styles.logoutText}>로그아웃</Text>
-                    </TouchableOpacity>
-                </View>
+                <Text style={styles.title}>다이어리</Text>
                 <Text style={styles.subtitle}>핀을 찍은 곳의 하루를 기록해보세요.</Text>
             </View>
 
@@ -249,21 +239,11 @@ const styles = StyleSheet.create({
         paddingHorizontal: 24,
         paddingTop: 16,
     },
-    headerRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
     title: {
         fontFamily: Fonts.serif,
         fontSize: 28,
         fontWeight: '800',
         color: Brand.green,
-    },
-    logoutText: {
-        fontSize: 13,
-        fontWeight: '700',
-        color: ScreenTheme.muted,
     },
     subtitle: {
         marginTop: 6,

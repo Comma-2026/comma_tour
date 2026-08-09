@@ -17,6 +17,7 @@ import { getWeather } from '@/api/weather';
 import { Brand, Fonts } from '@/constants/theme';
 import { useCurrentLocation } from '@/hooks/use-current-location';
 import type { Weather } from '@/types/weather';
+import { clearToken } from '@/utils/authStorage';
 
 type AccountMenu = {
     id: 'profile' | 'notifications' | 'logout';
@@ -105,7 +106,9 @@ export default function MyPageScreen() {
                     {
                         text: '로그아웃',
                         style: 'destructive',
-                        onPress: () => {
+                        onPress: async () => {
+                            // 로그인 토큰 삭제(일기 API 소유자 식별용) 후 로그인 화면으로
+                            await clearToken();
                             router.replace('/login');
                         },
                     },
