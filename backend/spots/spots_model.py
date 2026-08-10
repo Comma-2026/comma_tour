@@ -109,6 +109,20 @@ _LCLS_SYSTM2_TAG_MAP = {
     "VE11": "교통시설", "VE12": "문화관광",
 }
 
+# 지도/필터용 대분류 4종(+기타). lclsSystmCode2로 확인한 9개 대분류 코드 중
+# "야경"에 대응하는 코드는 없어서(시간대 속성이라 TourAPI 분류 체계 밖) 제외했다.
+# 나머지(LS/FD/AC/SH/EV)는 "기타"로 묶는다.
+_CATEGORY_MAP = {
+    "NA": "자연",
+    "HS": "역사",
+    "VE": "문화",
+    "EX": "체험",
+}
+
+
+def _classify_category(lcls_systm1: str) -> str:
+    return _CATEGORY_MAP.get(lcls_systm1, "기타")
+
 # 대구 기준 배편이 필요해 직선거리 추정이 무의미한 지역(법정동 시군구코드) 제외
 _EXCLUDED_REGIONS = {"울릉군"}
 
@@ -289,6 +303,7 @@ def _base_fields(item: dict, congestion_rate: float | None = None, wellness_ids:
         "region": addr1.split(" ")[1] if addr1 else "경상북도",
         "icon": "📍",
         "imageUrl": _to_https(item.get("firstimage") or None),
+        "category": _classify_category(item.get("lclsSystm1", "")),
         "tags": tags,
         "shortDesc": addr1,
         "congestion": congestion,

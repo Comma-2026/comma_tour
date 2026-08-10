@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { categoryEmojiFor } from '@/constants/spotCategory';
 import { Brand, Fonts } from '@/constants/theme';
 import type { Pin } from '@/types/pin';
 import { getPins } from '@/utils/pinStorage';
@@ -219,7 +220,7 @@ export default function PinRecordsScreen() {
                                 }
                             >
                                 <View style={styles.pinIconBox}>
-                                    <Text style={styles.pinIcon}>📍</Text>
+                                    <Text style={styles.pinIcon}>{categoryEmojiFor(pin.category)}</Text>
                                 </View>
                                 <View style={styles.pinContent}>
                                     <Text style={styles.pinTitle} numberOfLines={1}>

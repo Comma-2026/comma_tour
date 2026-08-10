@@ -3,6 +3,7 @@ export interface Pin {
   contentId: string        // 관광공사 contentId
   place_name: string
   region: string           // 예: "봉화군"
+  category: string         // 자연/역사/문화/체험/기타 (백엔드 SpotDetail.category 그대로)
   latitude: number
   longitude: number
   visited_at: string       // "YYYY-MM-DD"

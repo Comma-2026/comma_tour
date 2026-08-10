@@ -6,7 +6,10 @@ import random
 from spots import spots_model
 
 # 카드 목록에 노출할 필드(상세 정보는 detail 조회에서만 내려준다)
-_CARD_FIELDS = ["id", "name", "region", "icon", "tags", "shortDesc", "congestion", "distanceFromDaegu"]
+_CARD_FIELDS = ["id", "name", "region", "icon", "category", "tags", "shortDesc", "congestion", "distanceFromDaegu"]
+
+# 지도 탭 전체 목록(카탈로그)용 필드 — 좌표 포함, 랜덤 샘플링 없이 전체를 그대로 내려준다
+_CATALOG_FIELDS = ["id", "name", "region", "icon", "category", "shortDesc", "lat", "lng"]
 
 # 카드 하단 "어떤 점이 아쉬웠나요?" 피드백 칩 → 다음 추천 후보 필터.
 # 필터를 적용한 결과가 비면(너무 좁으면) 해당 필터는 건너뛴다.
@@ -63,6 +66,14 @@ def recommend_spots(
 
     picked = random.sample(pool, min(count, len(pool)))
     return [_to_card(s) for s in picked]
+
+
+def get_catalog(region: str | None = None) -> list[dict]:
+    """지도 탭 전체 목록용 — 추천처럼 랜덤 샘플링하지 않고 (지역 필터 있으면 그 안에서) 전체 반환."""
+    all_spots = spots_model.get_all_spots()
+    if region:
+        all_spots = [s for s in all_spots if s["region"] == region]
+    return [{field: s[field] for field in _CATALOG_FIELDS} for s in all_spots]
 
 
 def get_available_regions() -> list[str]:

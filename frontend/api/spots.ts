@@ -5,10 +5,24 @@ export type SpotCard = {
   name: string;
   region: string;
   icon: string;
+  /** 자연/역사/문화/체험/기타 대분류. TourAPI 분류 체계엔 "야경"에 대응하는 코드가 없어 표현 불가. */
+  category: string;
   tags: string[];
   shortDesc: string;
   congestion: string;
   distanceFromDaegu: string;
+};
+
+/** 지도 탭 전체 목록(카탈로그)용 — 좌표 포함, 카드보다 가벼움(태그/혼잡도/거리 없음). */
+export type SpotCatalogItem = {
+  id: string;
+  name: string;
+  region: string;
+  icon: string;
+  category: string;
+  shortDesc: string;
+  lat: number;
+  lng: number;
 };
 
 export type SpotDetail = SpotCard & {
@@ -107,6 +121,13 @@ export async function fetchRecommendedSpots(
 export async function fetchAvailableRegions(): Promise<string[]> {
   const data = await getJson<{ regions: string[] }>('/api/spots/regions');
   return data?.regions ?? [];
+}
+
+/** 지도 탭 전체 목록. region 주면 그 지역만. */
+export async function fetchSpotCatalog(region?: string | null): Promise<SpotCatalogItem[]> {
+  const query = region ? `?region=${encodeURIComponent(region)}` : '';
+  const data = await getJson<{ spots: SpotCatalogItem[] }>(`/api/spots/catalog${query}`);
+  return data?.spots ?? [];
 }
 
 /** 관광지 상세 정보 조회. 없으면 null. */

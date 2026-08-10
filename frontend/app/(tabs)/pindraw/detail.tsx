@@ -46,6 +46,7 @@ export default function SpotDetailScreen() {
             contentId: spot.id,
             place_name: spot.name,
             region: spot.region,
+            category: spot.category,
             latitude: spot.lat,
             longitude: spot.lng,
             visited_at: new Date().toISOString().slice(0, 10),
