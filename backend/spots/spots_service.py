@@ -6,7 +6,9 @@ import random
 from spots import spots_model
 
 # 카드 목록에 노출할 필드(상세 정보는 detail 조회에서만 내려준다)
-_CARD_FIELDS = ["id", "name", "region", "icon", "category", "tags", "shortDesc", "congestion", "distanceFromDaegu"]
+_CARD_FIELDS = [
+    "id", "name", "region", "icon", "imageUrl", "category", "tags", "shortDesc", "congestion", "distanceFromDaegu",
+]
 
 # 지도 탭 전체 목록(카탈로그)용 필드 — 좌표 포함, 랜덤 샘플링 없이 전체를 그대로 내려준다
 _CATALOG_FIELDS = ["id", "name", "region", "icon", "category", "shortDesc", "lat", "lng"]

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -247,8 +248,18 @@ export default function PinDrawScreen() {
                         activeOpacity={0.9}
                         onPress={handleOpenDetail}
                     >
-                        <Text style={styles.bannerIcon}>{current.icon}</Text>
+                        {current.imageUrl ? (
+                            <Image
+                                source={{ uri: current.imageUrl }}
+                                style={styles.bannerImage}
+                                contentFit="cover"
+                                transition={150}
+                            />
+                        ) : (
+                            <Text style={styles.bannerIcon}>{current.icon}</Text>
+                        )}
 
+                        {current.imageUrl && <View style={styles.bannerScrim} />}
                         <View style={styles.bannerTagRow}>
                             {current.tags.map((tag) => (
                                 <Text key={tag} style={styles.tagPill}>
@@ -412,6 +423,17 @@ const styles = StyleSheet.create({
     bannerIcon: {
         fontSize: 64,
         color: '#ffffff',
+    },
+    bannerImage: {
+        ...StyleSheet.absoluteFillObject,
+    },
+    bannerScrim: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        bottom: 0,
+        height: 56,
+        backgroundColor: 'rgba(0,0,0,0.32)',
     },
     bannerTagRow: {
         position: 'absolute',

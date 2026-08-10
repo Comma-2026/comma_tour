@@ -5,6 +5,8 @@ export type SpotCard = {
   name: string;
   region: string;
   icon: string;
+  /** 한국관광공사 제공 실제 사진 URL. 목업 모드거나 사진이 없으면 null. */
+  imageUrl: string | null;
   /** 자연/역사/문화/체험/기타 대분류. TourAPI 분류 체계엔 "야경"에 대응하는 코드가 없어 표현 불가. */
   category: string;
   tags: string[];
@@ -32,7 +34,6 @@ export type SpotDetail = SpotCard & {
   transportInfo: string;
   rating: number;
   reviewQuote: string;
-  imageUrl: string | null;
   lat: number;
   lng: number;
 };
