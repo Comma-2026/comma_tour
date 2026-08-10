@@ -21,7 +21,7 @@ pip install -r requirements.txt
 
 라고 치시면 저랑 동일한 flask가 깔립니다.
 
-###커밋 메시지 규칙
+### 커밋 메시지 규칙
 
 - FEAT: 새로운 기능 추가
 - FIX: 버그 수정
