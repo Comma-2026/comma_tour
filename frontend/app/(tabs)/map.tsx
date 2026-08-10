@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import WebView, { type WebViewMessageEvent } from 'react-native-webview';
 import { useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
 import { API_BASE_URL } from '@/constants/api';
@@ -267,27 +268,46 @@ function buildMapHtml(appkey: string): string {
 </html>`;
 }
 
-function SpotCard({ spot, onPress }: { spot: SpotMarker; onPress: () => void }) {
+function SpotCard({
+    spot,
+    onPress,
+    onDetailPress,
+}: {
+    spot: SpotMarker;
+    onPress: () => void;
+    onDetailPress: () => void;
+}) {
     return (
-        <TouchableOpacity style={styles.card} activeOpacity={0.85} onPress={onPress}>
-            <View style={[styles.cardIcon, { backgroundColor: CATEGORY_ICON_BG[spot.category] }]}>
-                <Text style={styles.cardIconText}>{CATEGORY_EMOJI[spot.category]}</Text>
-            </View>
-            <View style={styles.cardBody}>
-                <View style={styles.cardTitleRow}>
-                    <Text style={styles.cardTitle} numberOfLines={1}>
-                        {spot.place_name}
-                    </Text>
-                    <View style={styles.cardTagPill}>
-                        <Text style={styles.cardTagText}>{CATEGORY_LABEL[spot.category]}</Text>
-                    </View>
+        <View style={styles.card}>
+            <TouchableOpacity style={styles.cardMain} activeOpacity={0.85} onPress={onPress}>
+                <View style={[styles.cardIcon, { backgroundColor: CATEGORY_ICON_BG[spot.category] }]}>
+                    <Text style={styles.cardIconText}>{CATEGORY_EMOJI[spot.category]}</Text>
                 </View>
-                <Text style={styles.cardRegion}>📍 {spot.region}</Text>
-                <Text style={styles.cardDesc} numberOfLines={2}>
-                    {spot.description}
-                </Text>
-            </View>
-        </TouchableOpacity>
+                <View style={styles.cardBody}>
+                    <View style={styles.cardTitleRow}>
+                        <Text style={styles.cardTitle} numberOfLines={1}>
+                            {spot.place_name}
+                        </Text>
+                        <View style={styles.cardTagPill}>
+                            <Text style={styles.cardTagText}>{CATEGORY_LABEL[spot.category]}</Text>
+                        </View>
+                    </View>
+                    <Text style={styles.cardRegion}>📍 {spot.region}</Text>
+                    <Text style={styles.cardDesc} numberOfLines={2}>
+                        {spot.description}
+                    </Text>
+                </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+                style={styles.detailButton}
+                activeOpacity={0.7}
+                onPress={onDetailPress}
+                accessibilityRole="button"
+                accessibilityLabel={`${spot.place_name} 상세보기`}
+            >
+                <Ionicons name="chevron-forward" size={22} color="ScreenTheme.deepGreen" />
+            </TouchableOpacity>
+        </View>
     );
 }
 
@@ -370,6 +390,10 @@ export default function MapScreen() {
         webViewRef.current?.postMessage(
             JSON.stringify({ type: 'FOCUS_MARKER', contentId: spot.contentId }),
         );
+    };
+
+    const handleDetailPress = (spot: SpotMarker) => {
+        router.push({ pathname: '/pindraw/detail', params: { id: spot.contentId } });
     };
 
     if (!KAKAO_MAP_KEY) {
@@ -480,7 +504,11 @@ export default function MapScreen() {
                         data={filteredSpots}
                         keyExtractor={(item) => item.id}
                         renderItem={({ item }) => (
-                            <SpotCard spot={item} onPress={() => handleCardPress(item)} />
+                            <SpotCard
+                                spot={item}
+                                onPress={() => handleCardPress(item)}
+                                onDetailPress={() => handleDetailPress(item)}
+                            />
                         )}
                         contentContainerStyle={styles.listContent}
                         onScrollToIndexFailed={(info) => {
@@ -633,7 +661,6 @@ const styles = StyleSheet.create({
     card: {
         flexDirection: 'row',
         marginBottom: 12,
-        padding: 12,
         borderRadius: 16,
         backgroundColor: ScreenTheme.card,
         shadowColor: '#000',
@@ -641,6 +668,21 @@ const styles = StyleSheet.create({
         shadowRadius: 10,
         shadowOffset: { width: 0, height: 5 },
         elevation: 2,
+    },
+    cardMain: {
+        flex: 1,
+        flexDirection: 'row',
+        padding: 12,
+    },
+    detailButton: {
+        width: 52,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderLeftWidth: 1,
+        borderLeftColor: '#eef0eb',
+        borderTopRightRadius: 16,
+        borderBottomRightRadius: 16,
+        backgroundColor: '#ffffff',
     },
     cardIcon: {
         width: 44,
