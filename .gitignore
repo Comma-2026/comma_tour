@@ -219,3 +219,6 @@ __marimo__/
 
 # 로컬 mock LDAP 데이터(개발용)
 backend/login/mock_ldap.json
+
+# TourAPI 목록 디스크 캐시(로컬 생성물)
+backend/spots/spots_cache.json
