@@ -146,11 +146,19 @@ function buildMapHtml(appkey: string): string {
         el.style.fontSize = '26px';
         el.style.lineHeight = '1';
         el.style.cursor = 'pointer';
-        el.style.transform = 'translate(-50%, -100%)';
 
+        // 이모지 글꼴은 글리프 아래쪽(베이스라인 아래)에 자체 여백이 있어, 박스 맨아래(=좌표)보다
+        // 그림이 살짝 떠 보인다. 보이는 그림의 아래끝이 좌표에 닿도록 아래로 미세 보정한다.
+        // (% 기준 = 아이콘 높이 26px. 어긋나 보이면 카테고리별로 이 값만 조정하면 된다)
+        const EMOJI_NUDGE_Y = { nature: '12%', culture: '12%', night: '12%', etc: '10%' };
+        el.style.transform = 'translateY(' + (EMOJI_NUDGE_Y[spot.category] || '10%') + ')';
+
+        // 위치 지정은 CustomOverlay의 anchor로 한다(xAnchor 0.5 = 가로 중앙, yAnchor 1 = 세로 맨아래).
+        // 위 translateY는 글꼴 여백 보정용 소량 이동일 뿐, 앵커를 대신하면 안 된다.
         const overlay = new kakao.maps.CustomOverlay({
           position: position,
           content: el,
+          xAnchor: 0.5,
           yAnchor: 1,
         });
         overlay.setMap(map);

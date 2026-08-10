@@ -322,11 +322,18 @@ def _base_fields(item: dict, congestion_rate: float | None = None, wellness_ids:
     }
 
 
+# 스팟 스키마가 바뀔 때마다 1씩 올린다. 버전이 다른 디스크 캐시(옛 코드가 만든 것)는
+# 무시하고 새로 받아온다 — 옛 캐시에 새 필드(예: category)가 없어 KeyError 나는 것 방지.
+_CACHE_SCHEMA_VERSION = 2
+
+
 def _load_disk_cache() -> list[dict] | None:
     """디스크 캐시가 있고 아직 신선하면(TTL 안 지났으면) 그 목록을 반환. 서버 재시작에도 살아남는다."""
     try:
         with open(_LIST_CACHE_FILE, encoding="utf-8") as f:
             payload = json.load(f)
+        if payload.get("schemaVersion") != _CACHE_SCHEMA_VERSION:
+            return None
         if time.time() - payload["cachedAt"] < config.SPOT_CACHE_TTL_SECONDS:
             return payload["spots"]
     except (FileNotFoundError, KeyError, ValueError, json.JSONDecodeError):
@@ -335,7 +342,7 @@ def _load_disk_cache() -> list[dict] | None:
 
 
 def _save_disk_cache(spots: list[dict]) -> None:
-    payload = {"cachedAt": time.time(), "spots": spots}
+    payload = {"cachedAt": time.time(), "schemaVersion": _CACHE_SCHEMA_VERSION, "spots": spots}
     with open(_LIST_CACHE_FILE, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False)
 
