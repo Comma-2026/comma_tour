@@ -33,4 +33,14 @@ def login_route():
         result = login(email, password)
     except AuthError as exc:
         return jsonify({"success": False, "message": exc.message}), exc.status_code
-    return jsonify({"success": True, "message": "로그인 성공", "user": result}), 200
+    return (
+        jsonify(
+            {
+                "success": True,
+                "message": "로그인 성공",
+                "user": {"email": result["email"]},
+                "token": result["token"],
+            }
+        ),
+        200,
+    )

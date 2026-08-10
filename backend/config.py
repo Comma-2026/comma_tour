@@ -15,6 +15,10 @@ class Config:
     FLASK_PORT = int(os.getenv("FLASK_PORT", "5000"))
     FLASK_DEBUG = os.getenv("FLASK_DEBUG", "true").lower() == "true"
 
+    # 로그인 토큰 서명 키. 이 값이 바뀌면 기존 토큰은 모두 무효가 된다(전원 재로그인).
+    # 운영에서는 반드시 .env의 SECRET_KEY로 길고 무작위한 값을 지정할 것.
+    SECRET_KEY = os.getenv("SECRET_KEY", "dev-insecure-secret-change-me")
+
     # --- LDAP 동작 모드 ---
     #   mock : ldap3 내장 in-memory 서버 (Docker 불필요, 기본값)
     #   real : 실제 LDAP 서버(docker-compose의 OpenLDAP 등)에 연결
@@ -54,6 +58,19 @@ class Config:
     # SPOT_MODE=real일 때 목록/집중률/웰니스/상세 조회 결과를 이 초 동안 메모리에 캐싱한다.
     # (일일 트래픽 1000회 제한 보호용 — 요청마다 실제 API를 다시 부르지 않도록)
     SPOT_CACHE_TTL_SECONDS = int(os.getenv("SPOT_CACHE_TTL_SECONDS", "3600"))
+
+    # --- 다이어리 저장 백엔드 ---
+    #   json  : diaries_data.json 파일 (기본, DB 불필요)
+    #   mysql : MySQL 데이터베이스 (일기 내용 + 사진을 한 행에 저장)
+    DIARY_MODE = os.getenv("DIARY_MODE", "json").lower()
+
+    # --- MySQL 접속 (DIARY_MODE=mysql 일 때 사용) ---
+    # DB와 테이블은 첫 요청 시 자동 생성된다(CREATE DATABASE/TABLE IF NOT EXISTS).
+    MYSQL_HOST = os.getenv("MYSQL_HOST", "localhost")
+    MYSQL_PORT = int(os.getenv("MYSQL_PORT", "3306"))
+    MYSQL_USER = os.getenv("MYSQL_USER", "root")
+    MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "")
+    MYSQL_DB = os.getenv("MYSQL_DB", "comma_tour")
 
 
 config = Config()

@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { login } from '@/api/auth';
 import { Brand } from '@/constants/theme';
+import { setToken } from '@/utils/authStorage';
 
 /**
  * 로그인 화면. 스플래시 이후 진입한다.
@@ -33,7 +34,8 @@ export default function LoginScreen() {
     try {
       const res = await login(email.trim(), password);
       if (res.success) {
-        // 로그인 성공 → 메인 탭으로 이동
+        // 로그인 성공 → 토큰 저장(이후 일기 요청의 소유자 식별용) 후 메인 탭으로 이동
+        if (res.token) await setToken(res.token);
         router.replace('/(tabs)/home');
       } else {
         Alert.alert('로그인 실패', res.message);

@@ -4,6 +4,7 @@ export type AuthResponse = {
   success: boolean;
   message: string;
   user?: { email: string };
+  token?: string; // 로그인 성공 시 발급되는 서명 토큰
 };
 
 /** 요청이 응답 없이 멈추는 것을 막기 위한 타임아웃(ms) */

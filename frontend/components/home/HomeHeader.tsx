@@ -1,4 +1,5 @@
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { type Href, useRouter } from 'expo-router';
 
 import { Brand, Fonts } from '@/constants/theme';
 
@@ -9,6 +10,8 @@ const HomeTheme = {
 };
 
 export function HomeHeader() {
+    const router = useRouter();
+
     return (
         <View style={styles.header}>
             <Text style={styles.logo}>쉼표</Text>
@@ -18,9 +21,9 @@ export function HomeHeader() {
                 <TouchableOpacity
                     style={styles.settingButton}
                     activeOpacity={0.7}
-                    onPress={() => {
-                        // TODO: 설정 화면 연결 예정
-                    }}
+                    onPress={() => router.push('/mypage' as Href)}
+                    accessibilityRole="button"
+                    accessibilityLabel="마이페이지로 이동"
                 >
                     <Text style={styles.settingIcon}>⚙︎</Text>
                 </TouchableOpacity>
