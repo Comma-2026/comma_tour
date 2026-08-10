@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import WebView, { type WebViewMessageEvent } from 'react-native-webview';
 import { useFocusEffect } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 
 import { API_BASE_URL } from '@/constants/api';
 import { CATEGORY_EMOJI, CATEGORY_ICON_BG, CATEGORY_LABEL, toSpotCategory } from '@/constants/spotCategory';
@@ -283,6 +284,7 @@ function SpotCard({ spot, onPress }: { spot: SpotMarker; onPress: () => void }) 
 }
 
 export default function MapScreen() {
+    const router = useRouter();
     const { height: windowHeight } = useWindowDimensions();
     const mapHeight = windowHeight * 0.37;
 
@@ -452,7 +454,17 @@ export default function MapScreen() {
                         })}
                     </ScrollView>
 
-                    <Text style={styles.resultCount}>{filteredSpots.length}개의 장소</Text>
+                    <View style={styles.resultHeader}>
+                        <Text style={styles.resultCount}>{filteredSpots.length}개의 장소</Text>
+                        <TouchableOpacity
+                            activeOpacity={0.7}
+                            onPress={() => router.push('/pin-records')}
+                            accessibilityRole="button"
+                            accessibilityLabel="핀 기록 전체보기"
+                        >
+                            <Text style={styles.recordsButtonText}>전체보기 ›</Text>
+                        </TouchableOpacity>
+                    </View>
 
                     <FlatList
                         ref={flatListRef}
@@ -502,6 +514,11 @@ const styles = StyleSheet.create({
     headerCount: {
         fontSize: 11,
         fontWeight: '700',
+        color: ScreenTheme.deepGreen,
+    },
+    recordsButtonText: {
+        fontSize: 13,
+        fontWeight: '800',
         color: ScreenTheme.deepGreen,
     },
     searchBar: {
@@ -585,10 +602,15 @@ const styles = StyleSheet.create({
     categoryPillTextSelected: {
         color: '#ffffff',
     },
-    resultCount: {
+    resultHeader: {
         marginTop: 12,
         marginBottom: 8,
         paddingHorizontal: 20,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    resultCount: {
         fontSize: 12,
         fontWeight: '700',
         color: ScreenTheme.muted,
