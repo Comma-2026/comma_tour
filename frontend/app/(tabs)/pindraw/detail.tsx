@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { fetchSpotDetail, type SpotDetail } from '@/api/spots';
 import { Brand, Fonts } from '@/constants/theme';
 import type { Pin } from '@/types/pin';
+import { getCurrentLocation } from '@/utils/location';
 import { savePin } from '@/utils/pinStorage';
 
 const ScreenTheme = {
@@ -22,6 +23,7 @@ export default function SpotDetailScreen() {
     const isFromRecords = from === 'records';
     const [spot, setSpot] = useState<SpotDetail | null>(null);
     const [loading, setLoading] = useState(true);
+    const [routing, setRouting] = useState(false);
 
     useEffect(() => {
         if (!id) return;
@@ -31,11 +33,35 @@ export default function SpotDetailScreen() {
         });
     }, [id]);
 
-    const handleDirections = () => {
-        if (!spot) return;
-        Linking.openURL(
-            `https://map.kakao.com/link/to/${encodeURIComponent(spot.name)},${spot.lat},${spot.lng}`,
-        );
+    /**
+     * 카카오맵 길찾기. expo-location으로 현재 위치를 받아 출발지로,
+     * 이 관광지 좌표를 도착지로 자동 지정해서 연다.
+     * 위치를 못 얻으면(권한 거부 등) 도착지만 지정된 링크로 폴백한다.
+     */
+    const handleDirections = async () => {
+        if (!spot || routing) return;
+
+        const to = `${encodeURIComponent(spot.name)},${spot.lat},${spot.lng}`;
+
+        setRouting(true);
+        try {
+            const here = await getCurrentLocation();
+            Linking.openURL(
+                `https://map.kakao.com/link/from/${encodeURIComponent('내 위치')},${here.latitude},${here.longitude}/to/${to}`,
+            );
+        } catch (err) {
+            // 위치 서비스 꺼짐/권한 거부 → 이유를 알려주고, 도착지만 지정해서 연다.
+            const message =
+                err instanceof Error ? err.message : '현재 위치를 가져오지 못했습니다.';
+            Alert.alert('내 위치를 출발지로 넣지 못했어요', message, [
+                {
+                    text: '길찾기 계속',
+                    onPress: () => Linking.openURL(`https://map.kakao.com/link/to/${to}`),
+                },
+            ]);
+        } finally {
+            setRouting(false);
+        }
     };
 
     const handleSelect = async () => {
@@ -118,21 +144,29 @@ export default function SpotDetailScreen() {
                         <Text style={styles.reviewTitle}>리뷰</Text>
                         <Text style={styles.reviewRating}>★★★★★ {spot.rating.toFixed(1)}</Text>
                     </View>
-                    <Text style={styles.reviewQuote}>"{spot.reviewQuote}"</Text>
+                    <Text style={styles.reviewQuote}>&ldquo;{spot.reviewQuote}&rdquo;</Text>
 
                     <View style={styles.actionRow}>
                         <TouchableOpacity
                             style={isFromRecords ? styles.primaryButton : styles.secondaryButton}
                             activeOpacity={0.85}
                             onPress={handleDirections}
+                            disabled={routing}
                         >
-                            <Text
-                                style={
-                                    isFromRecords ? styles.primaryButtonText : styles.secondaryButtonText
-                                }
-                            >
-                                길찾기
-                            </Text>
+                            {routing ? (
+                                <ActivityIndicator
+                                    size="small"
+                                    color={isFromRecords ? '#ffffff' : ScreenTheme.greenDeep}
+                                />
+                            ) : (
+                                <Text
+                                    style={
+                                        isFromRecords ? styles.primaryButtonText : styles.secondaryButtonText
+                                    }
+                                >
+                                    길찾기
+                                </Text>
+                            )}
                         </TouchableOpacity>
                         {!isFromRecords && (
                             <TouchableOpacity style={styles.primaryButton} activeOpacity={0.85} onPress={handleSelect}>
