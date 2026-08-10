@@ -24,8 +24,8 @@ real 모드 설계:
 
 아직 실제 응답으로 채우지 못한 것 (다음 연동 대상):
     - transportInfo          → TourAPI 관광지(contentTypeId=12) 스키마엔 대중교통 경로 정보가 없음
-    - rating / reviewQuote   → 카카오맵 API도 리뷰/평점을 제공하지 않음(카카오 공식 확인, 아래 참고)
-      → 리뷰/평점이 꼭 필요하면 자체 리뷰 기능을 만들거나 별도 제휴가 필요함
+
+(별점/리뷰는 카카오맵 API도 제공 안 해서 기능 자체를 뺐다 — rating/reviewQuote 필드 없음.)
 """
 from __future__ import annotations
 
@@ -317,8 +317,6 @@ def _base_fields(item: dict, congestion_rate: float | None = None, wellness_ids:
         "admissionFee": "정보 없음",
         "businessHours": "정보 없음",
         "transportInfo": "정보 없음",
-        "rating": 0.0,
-        "reviewQuote": "",
         "lat": lat,
         "lng": lng,
     }

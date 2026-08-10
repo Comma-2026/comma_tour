@@ -141,12 +141,6 @@ export default function SpotDetailScreen() {
                         <InfoRow label="거리" value={spot.distanceFromDaegu} last />
                     </View>
 
-                    <View style={styles.reviewHeader}>
-                        <Text style={styles.reviewTitle}>리뷰</Text>
-                        <Text style={styles.reviewRating}>★★★★★ {spot.rating.toFixed(1)}</Text>
-                    </View>
-                    <Text style={styles.reviewQuote}>&ldquo;{spot.reviewQuote}&rdquo;</Text>
-
                     <View style={styles.actionRow}>
                         <TouchableOpacity
                             style={isFromRecords ? styles.primaryButton : styles.secondaryButton}
@@ -308,29 +302,6 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontWeight: '700',
         color: ScreenTheme.text,
-    },
-    reviewHeader: {
-        marginTop: 22,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-    },
-    reviewTitle: {
-        fontSize: 15,
-        fontWeight: '800',
-        color: ScreenTheme.text,
-    },
-    reviewRating: {
-        fontSize: 13,
-        fontWeight: '700',
-        color: '#e0a527',
-    },
-    reviewQuote: {
-        marginTop: 10,
-        fontSize: 14,
-        lineHeight: 22,
-        fontStyle: 'italic',
-        color: '#4a4a45',
     },
     actionRow: {
         marginTop: 28,

@@ -32,8 +32,6 @@ export type SpotDetail = SpotCard & {
   admissionFee: string;
   businessHours: string;
   transportInfo: string;
-  rating: number;
-  reviewQuote: string;
   lat: number;
   lng: number;
 };
