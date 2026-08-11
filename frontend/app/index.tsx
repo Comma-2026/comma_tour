@@ -48,9 +48,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logo: {
+    fontFamily: 'NotoSerifKR_500Medium',
     color: '#FFFFFF',
-    fontSize: 34,
-    fontWeight: '600',
-    letterSpacing: 1,
+    fontSize: 42,
+    textAlign: 'center',
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
 });
