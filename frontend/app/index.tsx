@@ -6,7 +6,7 @@ import { Brand } from '@/constants/theme';
 import { getToken } from '@/utils/authStorage';
 
 /** 스플래시가 떠 있는 시간(ms) */
-const SPLASH_DURATION = 9999998;
+const SPLASH_DURATION = 1800;
 
 /**
  * 앱 진입 화면. 잠깐 스플래시(쉼표 카드)를 보여준 뒤,
