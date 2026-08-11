@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -12,6 +12,7 @@ import {
     type SpotCard,
 } from '@/api/spots';
 import { Brand, Fonts } from '@/constants/theme';
+import { registerPindrawSession } from '@/utils/pindrawSession';
 
 const ScreenTheme = {
     background: '#f9f8f2',
@@ -70,6 +71,26 @@ export default function PinDrawScreen() {
             router.setParams({ justPinned: undefined });
         }
     }, [justPinned, surveyDone, draw, router]);
+
+    // 진행중인 뽑기 존재 확인용 함수
+    const surveyDoneRef = useRef(surveyDone);
+    useEffect(() => {
+        surveyDoneRef.current = surveyDone;
+    }, [surveyDone]);
+
+    const resetToSurvey = useCallback(() => {
+        setSurveyDone(false);
+        setPreference(new Set());
+        setSelectedRegion(null);
+        setCards([]);
+        setIndex(0);
+        setFeedback(new Set());
+        setError(false);
+    }, []);
+
+    useEffect(() => {
+        registerPindrawSession(() => surveyDoneRef.current, resetToSurvey);
+    }, [resetToSurvey]);
 
     const current = cards[index];
 

@@ -1,8 +1,9 @@
-import { Tabs } from 'expo-router';
+import { router, Tabs, usePathname, type Href } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Platform } from 'react-native';
 
 import { Brand } from '@/constants/theme';
+import { confirmResetIfNeeded } from '@/utils/pindrawSession';
 
 const TabTheme = {
   background: '#ffffff',
@@ -11,7 +12,32 @@ const TabTheme = {
   inactive: Brand.muted,
 };
 
+/**
+ * 초기화 확인창
+ */
+function guardLeavePindraw(isOnPindraw: boolean, proceed: () => void) {
+  return {
+    tabPress: (e: { preventDefault: () => void }) => {
+      if (!isOnPindraw) return;
+
+      e.preventDefault();
+      confirmResetIfNeeded(proceed);
+    },
+  };
+}
+
+function goToPindrawIndex() {
+  router.dismissTo('/pindraw');
+}
+
+function goToTab(path: Href) {
+  return () => router.navigate(path);
+}
+
 export default function TabLayout() {
+  const pathname = usePathname();
+  const isOnPindraw = pathname.startsWith('/pindraw');
+
   return (
     <Tabs
       initialRouteName="home"
@@ -52,6 +78,7 @@ export default function TabLayout() {
             />
           ),
         }}
+        listeners={() => guardLeavePindraw(isOnPindraw, goToTab('/home'))}
       />
 
       <Tabs.Screen
@@ -66,6 +93,7 @@ export default function TabLayout() {
             />
           ),
         }}
+        listeners={() => guardLeavePindraw(isOnPindraw, goToPindrawIndex)}
       />
 
       <Tabs.Screen
@@ -80,6 +108,7 @@ export default function TabLayout() {
             />
           ),
         }}
+        listeners={() => guardLeavePindraw(isOnPindraw, goToTab('/map'))}
       />
 
       <Tabs.Screen
@@ -94,6 +123,7 @@ export default function TabLayout() {
             />
           ),
         }}
+        listeners={() => guardLeavePindraw(isOnPindraw, goToTab('/diary'))}
       />
 
       <Tabs.Screen
