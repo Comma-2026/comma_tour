@@ -15,9 +15,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getWeather } from '@/api/weather';
 import { Brand, Fonts } from '@/constants/theme';
-import { useCurrentLocation } from '@/hooks/use-current-location';
 import type { Weather } from '@/types/weather';
 import { clearToken } from '@/utils/authStorage';
+import { getCurrentLocation } from '@/utils/location';
 
 type AccountMenu = {
     id: 'profile' | 'notifications' | 'logout';
@@ -82,7 +82,6 @@ function getWeatherIconName(weather: Weather | null): keyof typeof Ionicons.glyp
 
 export default function MyPageScreen() {
     const router = useRouter();
-    const { refreshLocation } = useCurrentLocation();
 
     const [weather, setWeather] = useState<Weather | null>(null);
     const [weatherLoading, setWeatherLoading] = useState(true);
@@ -125,11 +124,17 @@ export default function MyPageScreen() {
             setWeatherLoading(true);
             setWeatherError(null);
 
-            const currentLocation = await refreshLocation();
-
-            if (!currentLocation) {
+            // 위치 실패는 구체적 원인(권한 차단/위치 서비스 꺼짐 등)을 그대로 보여준다.
+            let currentLocation;
+            try {
+                currentLocation = await getCurrentLocation();
+            } catch (locationError) {
                 setWeather(null);
-                setWeatherError('현재 위치를 가져오지 못했습니다.');
+                setWeatherError(
+                    locationError instanceof Error
+                        ? locationError.message
+                        : '현재 위치를 가져오지 못했습니다.',
+                );
                 return;
             }
 
@@ -168,7 +173,7 @@ export default function MyPageScreen() {
         } finally {
             setWeatherLoading(false);
         }
-    }, [refreshLocation]);
+    }, []);
 
     useEffect(() => {
         loadWeather();

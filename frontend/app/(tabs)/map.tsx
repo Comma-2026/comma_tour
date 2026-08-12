@@ -305,7 +305,7 @@ function SpotCard({
                 accessibilityRole="button"
                 accessibilityLabel={`${spot.place_name} 상세보기`}
             >
-                <Ionicons name="chevron-forward" size={22} color="ScreenTheme.deepGreen" />
+                <Ionicons name="chevron-forward" size={22} color={ScreenTheme.deepGreen} />
             </TouchableOpacity>
         </View>
     );
@@ -393,7 +393,9 @@ export default function MapScreen() {
     };
 
     const handleDetailPress = (spot: SpotMarker) => {
-        router.push({ pathname: '/pindraw/detail', params: { id: spot.contentId } });
+        // 핀 기록 화면의 카드 화살표(>)와 동일한 읽기 전용 상세로 연다
+        // (from: 'records' → "이 여행지로 정하기" 버튼 없이 길찾기만).
+        router.push({ pathname: '/pindraw/detail', params: { id: spot.contentId, from: 'records' } });
     };
 
     if (!KAKAO_MAP_KEY) {
