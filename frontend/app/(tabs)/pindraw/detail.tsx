@@ -13,12 +13,17 @@ import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { fetchDriveDistance, fetchSpotDetail, type SpotDetail } from '@/api/spots';
+import {
+  fetchDriveDistance,
+  fetchSpotDetail,
+  type SpotDetail,
+} from '@/api/spots';
 import { Brand, Fonts } from '@/constants/theme';
 import type { CurrentLocation } from '@/types/location';
 import type { Pin } from '@/types/pin';
 import { estimateDrivingLabel } from '@/utils/distance';
 import { getCurrentLocation } from '@/utils/location';
+import { resetPindrawSession } from '@/utils/pindrawSession';
 import { savePin } from '@/utils/pinStorage';
 
 const ScreenTheme = {
@@ -36,7 +41,9 @@ export default function SpotDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [routing, setRouting] = useState(false);
   // 거리 표시용 — 실패해도(권한 거부 등) 조용히 무시하고 서버가 준 대구 기준 거리로 폴백한다.
-  const [userLocation, setUserLocation] = useState<CurrentLocation | null>(null);
+  const [userLocation, setUserLocation] = useState<CurrentLocation | null>(
+    null,
+  );
 
   useEffect(() => {
     if (!id) return;
@@ -69,7 +76,8 @@ export default function SpotDetailScreen() {
   const distanceLabel =
     driveLabel ??
     (spot && userLocation
-      ? estimateDrivingLabel(userLocation, { lat: spot.lat, lng: spot.lng }).label
+      ? estimateDrivingLabel(userLocation, { lat: spot.lat, lng: spot.lng })
+          .label
       : spot?.distanceFromDaegu);
 
   /**
@@ -124,11 +132,11 @@ export default function SpotDetailScreen() {
     Alert.alert('핀 완료', '이 여행지가 지도에 핀으로 저장됐어요.', [
       {
         text: '확인',
-        onPress: () =>
-          router.replace({
-            pathname: '/pindraw',
-            params: { justPinned: Date.now().toString() },
-          }),
+        onPress: () => {
+          // 뽑기는 핀으로 마무리됐으니 세션을 초기화하고, 새 핀이 바로 보이는 지도 탭으로 이동한다.
+          resetPindrawSession();
+          router.replace('/(tabs)/map');
+        },
       },
     ]);
   };
@@ -183,7 +191,11 @@ export default function SpotDetailScreen() {
             <InfoRow label="주차" value={spot.hasParking ? 'O' : 'X'} />
             <InfoRow label="이용권" value={spot.admissionFee} />
             <InfoRow label="영업시간" value={spot.businessHours} />
-            <InfoRow label="거리" value={distanceLabel ?? spot.distanceFromDaegu} last />
+            <InfoRow
+              label="거리"
+              value={distanceLabel ?? spot.distanceFromDaegu}
+              last
+            />
           </View>
 
           <View style={styles.actionRow}>
