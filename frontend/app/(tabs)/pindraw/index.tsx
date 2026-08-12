@@ -10,10 +10,14 @@ import {
     FEEDBACK_TAGS,
     PREFERENCE_TAG_GROUPS,
     fetchAvailableRegions,
+    fetchDriveDistance,
     fetchRecommendedSpots,
     type SpotCard,
 } from '@/api/spots';
 import { Brand, Fonts } from '@/constants/theme';
+import type { CurrentLocation } from '@/types/location';
+import { estimateDrivingLabel } from '@/utils/distance';
+import { getCurrentLocation } from '@/utils/location';
 import { confirmResetIfNeeded, registerPindrawSession } from '@/utils/pindrawSession';
 
 const ScreenTheme = {
@@ -37,6 +41,14 @@ export default function PinDrawScreen() {
 
     useEffect(() => {
         fetchAvailableRegions().then(setRegions);
+    }, []);
+
+    // 카드 거리 표시용 — 실패해도(권한 거부 등) 조용히 무시하고 서버가 준 대구 기준 거리로 폴백한다.
+    const [userLocation, setUserLocation] = useState<CurrentLocation | null>(null);
+    useEffect(() => {
+        getCurrentLocation()
+            .then(setUserLocation)
+            .catch(() => setUserLocation(null));
     }, []);
 
     const [cards, setCards] = useState<SpotCard[]>([]);
@@ -111,6 +123,27 @@ export default function PinDrawScreen() {
     );
 
     const current = cards[index];
+
+    // 즉시 뜨는 직선거리 근사치 → 카카오모빌리티 실제 도로 거리가 도착하면 조용히 교체.
+    // 실패하면(네트워크 오류 등) 근사치에 그대로 머문다.
+    const [driveLabel, setDriveLabel] = useState<string | null>(null);
+    useEffect(() => {
+        setDriveLabel(null);
+        if (!current || !userLocation) return;
+        let cancelled = false;
+        fetchDriveDistance(userLocation, current.lat, current.lng).then((result) => {
+            if (!cancelled && result) setDriveLabel(result.label);
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [current?.id, userLocation]);
+
+    const distanceLabel =
+        driveLabel ??
+        (current && userLocation
+            ? estimateDrivingLabel(userLocation, { lat: current.lat, lng: current.lng }).label
+            : current?.distanceFromDaegu);
 
     const togglePreference = (tagId: string) => {
         setPreference((prev) => {
@@ -351,7 +384,7 @@ export default function PinDrawScreen() {
 
                     <View style={styles.metaRow}>
                         <Text style={styles.metaText}>● {current.congestion}</Text>
-                        <Text style={styles.metaText}>🚗 {current.distanceFromDaegu}</Text>
+                        <Text style={styles.metaText}>🚗 {distanceLabel}</Text>
                     </View>
 
                     <Text style={styles.feedbackLabel}>어떤 점이 아쉬웠나요?</Text>

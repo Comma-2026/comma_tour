@@ -12,7 +12,10 @@ export type SpotCard = {
   tags: string[];
   shortDesc: string;
   congestion: string;
+  /** 대구 기준 서버 계산치(백업용). 화면에는 내 위치 기준 거리(utils/distance)를 우선 쓴다. */
   distanceFromDaegu: string;
+  lat: number;
+  lng: number;
 };
 
 /** 지도 탭 전체 목록(카탈로그)용 — 좌표 포함, 카드보다 가벼움(태그/혼잡도/거리 없음). */
@@ -32,8 +35,6 @@ export type SpotDetail = SpotCard & {
   admissionFee: string;
   businessHours: string;
   transportInfo: string;
-  lat: number;
-  lng: number;
 };
 
 /** 카드 하단 "어떤 점이 아쉬웠나요?" 피드백 칩. id는 백엔드 필터 키와 1:1로 맞춘다. */
@@ -145,4 +146,26 @@ export async function fetchSpotCatalog(region?: string | null): Promise<SpotCata
 export async function fetchSpotDetail(id: string): Promise<SpotDetail | null> {
   const data = await getJson<{ success: boolean; spot?: SpotDetail }>(`/api/spots/${id}`);
   return data?.success ? (data.spot ?? null) : null;
+}
+
+/**
+ * 내 위치 → 관광지 실제 도로 거리/시간(카카오모빌리티 자동차 길찾기).
+ * 실패하면(네트워크 오류, 키 미설정 등) null — 호출부에서 직선거리 근사치(utils/distance)로 폴백한다.
+ */
+export async function fetchDriveDistance(
+  origin: { latitude: number; longitude: number },
+  destLat: number,
+  destLng: number,
+): Promise<{ label: string; minutes: number } | null> {
+  const params = new URLSearchParams({
+    originLat: String(origin.latitude),
+    originLng: String(origin.longitude),
+    destLat: String(destLat),
+    destLng: String(destLng),
+  });
+  const data = await getJson<{ success: boolean; label?: string; minutes?: number }>(
+    `/api/spots/route-distance?${params.toString()}`,
+  );
+  if (!data?.success || !data.label || data.minutes === undefined) return null;
+  return { label: data.label, minutes: data.minutes };
 }
