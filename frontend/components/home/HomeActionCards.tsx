@@ -1,4 +1,4 @@
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { Brand, Fonts } from '@/constants/theme';
@@ -19,7 +19,7 @@ export function HomeActionCards() {
     };
 
     const handleSearchPress = () => {
-        Alert.alert('준비 중', '장소 검색 기능은 곧 연결될 예정이에요.');
+        router.push('/search');
     };
 
     return (
