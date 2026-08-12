@@ -237,10 +237,12 @@ function InfoRow({
   value: string;
   last?: boolean;
 }) {
+  const normalizedValue = value.replace(/<br\s*\/?>/gi, '\n').trim();
+
   return (
     <View style={[styles.infoRow, last && styles.infoRowLast]}>
       <Text style={styles.infoLabel}>{label}</Text>
-      <Text style={styles.infoValue}>{value}</Text>
+      <Text style={styles.infoValue}>{normalizedValue}</Text>
     </View>
   );
 }
@@ -348,21 +350,28 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#f0ede4',
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    gap: 16,
   },
   infoRowLast: {
     borderBottomWidth: 0,
   },
   infoLabel: {
+    width: 72,
+    flexShrink: 0,
     fontSize: 13,
     fontWeight: '700',
     color: ScreenTheme.muted,
   },
   infoValue: {
+    flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
     fontSize: 13,
+    lineHeight: 19,
     fontWeight: '700',
     color: ScreenTheme.text,
+    textAlign: 'right',
   },
   actionRow: {
     marginTop: 28,
