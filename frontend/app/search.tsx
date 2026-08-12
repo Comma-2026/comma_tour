@@ -57,12 +57,26 @@ export default function SearchScreen() {
     const results = useMemo(() => {
         const q = query.trim();
         if (!q) return [];
-        return catalog.filter(
-            (spot) =>
-                spot.name.includes(q) ||
-                spot.region.includes(q) ||
-                spot.shortDesc.includes(q),
-        );
+
+        // 매칭 우선순위: 이름 시작(0) > 이름 포함(1) > 지역(2) > 주소(3). 없으면 제외(-1).
+        // 주소 매칭은 한 글자 검색에선 엉뚱한 결과만 만들어서(예: '우' → 주소의 '우회로')
+        // 2글자 이상일 때만 적용한다.
+        const rank = (spot: SpotCatalogItem): number => {
+            if (spot.name.startsWith(q)) return 0;
+            if (spot.name.includes(q)) return 1;
+            if (spot.region.includes(q)) return 2;
+            if (q.length >= 2 && spot.shortDesc.includes(q)) return 3;
+            return -1;
+        };
+
+        return catalog
+            .map((spot) => ({ spot, rank: rank(spot) }))
+            .filter((entry) => entry.rank >= 0)
+            .sort(
+                (a, b) =>
+                    a.rank - b.rank || a.spot.name.localeCompare(b.spot.name, 'ko'),
+            )
+            .map((entry) => entry.spot);
     }, [catalog, query]);
 
     const goDetail = (spot: SpotCatalogItem) => {

@@ -14,15 +14,10 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import {
-  fetchDriveDistance,
-  fetchSpotDetail,
-  type SpotDetail,
-} from '@/api/spots';
+import { fetchSpotDetail, type SpotDetail } from '@/api/spots';
 import { Brand, Fonts } from '@/constants/theme';
-import type { CurrentLocation } from '@/types/location';
+import { useSpotDistance } from '@/hooks/use-spot-distance';
 import type { Pin } from '@/types/pin';
-import { estimateDrivingLabel } from '@/utils/distance';
 import { getCurrentLocation } from '@/utils/location';
 import { resetPindrawSession } from '@/utils/pindrawSession';
 import { getPins, savePin } from '@/utils/pinStorage';
@@ -43,10 +38,6 @@ export default function SpotDetailScreen() {
   const [saving, setSaving] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
   const [pinStatusLoading, setPinStatusLoading] = useState(true);
-  // 거리 표시용 — 실패해도(권한 거부 등) 조용히 무시하고 서버가 준 대구 기준 거리로 폴백한다.
-  const [userLocation, setUserLocation] = useState<CurrentLocation | null>(
-    null,
-  );
 
   useEffect(() => {
     if (!id) return;
@@ -77,32 +68,8 @@ export default function SpotDetailScreen() {
     }, [id]),
   );
 
-  useEffect(() => {
-    getCurrentLocation()
-      .then(setUserLocation)
-      .catch(() => setUserLocation(null));
-  }, []);
-
-  // 즉시 뜨는 직선거리 근사치 → 카카오모빌리티 실제 도로 거리가 도착하면 조용히 교체.
-  const [driveLabel, setDriveLabel] = useState<string | null>(null);
-  useEffect(() => {
-    setDriveLabel(null);
-    if (!spot || !userLocation) return;
-    let cancelled = false;
-    fetchDriveDistance(userLocation, spot.lat, spot.lng).then((result) => {
-      if (!cancelled && result) setDriveLabel(result.label);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [spot?.id, userLocation]);
-
-  const distanceLabel =
-    driveLabel ??
-    (spot && userLocation
-      ? estimateDrivingLabel(userLocation, { lat: spot.lat, lng: spot.lng })
-          .label
-      : spot?.distanceFromDaegu);
+  // 내 위치 기준 거리 라벨(위치 확인 중/권한 없음 상태도 문구로 표시).
+  const distanceLabel = useSpotDistance(spot);
 
   /**
    * 카카오맵 길찾기. expo-location으로 현재 위치를 받아 출발지로,
@@ -221,54 +188,52 @@ export default function SpotDetailScreen() {
             <InfoRow label="주차" value={spot.hasParking ? 'O' : 'X'} />
             <InfoRow label="이용권" value={spot.admissionFee} />
             <InfoRow label="영업시간" value={spot.businessHours} />
-            <InfoRow
-              label="거리"
-              value={distanceLabel ?? spot.distanceFromDaegu}
-              last
-            />
+            <InfoRow label="거리" value={distanceLabel} last />
           </View>
 
-          {!pinStatusLoading && <View style={styles.actionRow}>
-            <TouchableOpacity
-              style={
-                isPinned ? styles.primaryButton : styles.secondaryButton
-              }
-              activeOpacity={0.85}
-              onPress={handleDirections}
-              disabled={routing}
-            >
-              {routing ? (
-                <ActivityIndicator
-                  size="small"
-                  color={isPinned ? '#ffffff' : ScreenTheme.greenDeep}
-                />
-              ) : (
-                <Text
-                  style={
-                    isPinned
-                      ? styles.primaryButtonText
-                      : styles.secondaryButtonText
-                  }
-                >
-                  길찾기
-                </Text>
-              )}
-            </TouchableOpacity>
-            {!isPinned && (
+          {!pinStatusLoading && (
+            <View style={styles.actionRow}>
               <TouchableOpacity
-                style={styles.primaryButton}
+                style={isPinned ? styles.primaryButton : styles.secondaryButton}
                 activeOpacity={0.85}
-                onPress={handleSelect}
-                disabled={saving}
+                onPress={handleDirections}
+                disabled={routing}
               >
-                {saving ? (
-                  <ActivityIndicator size="small" color="#ffffff" />
+                {routing ? (
+                  <ActivityIndicator
+                    size="small"
+                    color={isPinned ? '#ffffff' : ScreenTheme.greenDeep}
+                  />
                 ) : (
-                  <Text style={styles.primaryButtonText}>이 여행지로 정하기</Text>
+                  <Text
+                    style={
+                      isPinned
+                        ? styles.primaryButtonText
+                        : styles.secondaryButtonText
+                    }
+                  >
+                    길찾기
+                  </Text>
                 )}
               </TouchableOpacity>
-            )}
-          </View>}
+              {!isPinned && (
+                <TouchableOpacity
+                  style={styles.primaryButton}
+                  activeOpacity={0.85}
+                  onPress={handleSelect}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <ActivityIndicator size="small" color="#ffffff" />
+                  ) : (
+                    <Text style={styles.primaryButtonText}>
+                      이 여행지로 정하기
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
         </ScrollView>
       )}
     </SafeAreaView>
