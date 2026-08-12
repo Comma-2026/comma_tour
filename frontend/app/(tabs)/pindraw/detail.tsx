@@ -19,6 +19,7 @@ import type { CurrentLocation } from '@/types/location';
 import type { Pin } from '@/types/pin';
 import { estimateDrivingLabel } from '@/utils/distance';
 import { getCurrentLocation } from '@/utils/location';
+import { resetPindrawSession } from '@/utils/pindrawSession';
 import { savePin } from '@/utils/pinStorage';
 
 const ScreenTheme = {
@@ -124,11 +125,11 @@ export default function SpotDetailScreen() {
     Alert.alert('핀 완료', '이 여행지가 지도에 핀으로 저장됐어요.', [
       {
         text: '확인',
-        onPress: () =>
-          router.replace({
-            pathname: '/pindraw',
-            params: { justPinned: Date.now().toString() },
-          }),
+        onPress: () => {
+          // 뽑기는 핀으로 마무리됐으니 세션을 초기화하고, 새 핀이 바로 보이는 지도 탭으로 이동한다.
+          resetPindrawSession();
+          router.replace('/(tabs)/map');
+        },
       },
     ]);
   };

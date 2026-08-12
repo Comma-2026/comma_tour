@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, BackHandler, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Image } from 'expo-image';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -29,7 +29,6 @@ const ScreenTheme = {
 
 export default function PinDrawScreen() {
     const router = useRouter();
-    const { justPinned } = useLocalSearchParams<{ justPinned?: string }>();
 
     // 이번 세션 동안 유지되는 선호(첫 진입 설문). 매 추천 호출에 함께 반영된다.
     const [surveyDone, setSurveyDone] = useState(false);
@@ -79,14 +78,6 @@ export default function PinDrawScreen() {
     useEffect(() => {
         if (surveyDone) draw();
     }, [surveyDone, draw]);
-
-    // 상세 화면에서 "이 여행지로 정하기"로 핀 완료 후 돌아오면, 새 3장으로 다시 시작한다.
-    useEffect(() => {
-        if (justPinned && surveyDone) {
-            draw();
-            router.setParams({ justPinned: undefined });
-        }
-    }, [justPinned, surveyDone, draw, router]);
 
     // 진행중인 뽑기 존재 확인용 함수
     const surveyDoneRef = useRef(surveyDone);
