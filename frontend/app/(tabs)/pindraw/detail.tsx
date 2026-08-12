@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
@@ -24,7 +25,7 @@ import type { Pin } from '@/types/pin';
 import { estimateDrivingLabel } from '@/utils/distance';
 import { getCurrentLocation } from '@/utils/location';
 import { resetPindrawSession } from '@/utils/pindrawSession';
-import { savePin } from '@/utils/pinStorage';
+import { getPins, savePin } from '@/utils/pinStorage';
 
 const ScreenTheme = {
   background: '#f9f8f2',
@@ -35,11 +36,13 @@ const ScreenTheme = {
 
 export default function SpotDetailScreen() {
   const router = useRouter();
-  const { id, from } = useLocalSearchParams<{ id: string; from?: string }>();
-  const isFromRecords = from === 'records';
+  const { id } = useLocalSearchParams<{ id: string }>();
   const [spot, setSpot] = useState<SpotDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [routing, setRouting] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [isPinned, setIsPinned] = useState(false);
+  const [pinStatusLoading, setPinStatusLoading] = useState(true);
   // 거리 표시용 — 실패해도(권한 거부 등) 조용히 무시하고 서버가 준 대구 기준 거리로 폴백한다.
   const [userLocation, setUserLocation] = useState<CurrentLocation | null>(
     null,
@@ -52,6 +55,27 @@ export default function SpotDetailScreen() {
       setLoading(false);
     });
   }, [id]);
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      setPinStatusLoading(true);
+
+      getPins()
+        .then((pins) => {
+          if (active) {
+            setIsPinned(pins.some((pin) => pin.contentId === id));
+          }
+        })
+        .finally(() => {
+          if (active) setPinStatusLoading(false);
+        });
+
+      return () => {
+        active = false;
+      };
+    }, [id]),
+  );
 
   useEffect(() => {
     getCurrentLocation()
@@ -112,7 +136,7 @@ export default function SpotDetailScreen() {
   };
 
   const handleSelect = async () => {
-    if (!spot) return;
+    if (!spot || saving || isPinned) return;
 
     const pin: Pin = {
       id: Date.now().toString(),
@@ -127,7 +151,13 @@ export default function SpotDetailScreen() {
       photo_url: null,
       phrase: null,
     };
-    await savePin(pin);
+    setSaving(true);
+    try {
+      await savePin(pin);
+      setIsPinned(true);
+    } finally {
+      setSaving(false);
+    }
 
     Alert.alert('핀 완료', '이 여행지가 지도에 핀으로 저장됐어요.', [
       {
@@ -198,10 +228,10 @@ export default function SpotDetailScreen() {
             />
           </View>
 
-          <View style={styles.actionRow}>
+          {!pinStatusLoading && <View style={styles.actionRow}>
             <TouchableOpacity
               style={
-                isFromRecords ? styles.primaryButton : styles.secondaryButton
+                isPinned ? styles.primaryButton : styles.secondaryButton
               }
               activeOpacity={0.85}
               onPress={handleDirections}
@@ -210,12 +240,12 @@ export default function SpotDetailScreen() {
               {routing ? (
                 <ActivityIndicator
                   size="small"
-                  color={isFromRecords ? '#ffffff' : ScreenTheme.greenDeep}
+                  color={isPinned ? '#ffffff' : ScreenTheme.greenDeep}
                 />
               ) : (
                 <Text
                   style={
-                    isFromRecords
+                    isPinned
                       ? styles.primaryButtonText
                       : styles.secondaryButtonText
                   }
@@ -224,16 +254,21 @@ export default function SpotDetailScreen() {
                 </Text>
               )}
             </TouchableOpacity>
-            {!isFromRecords && (
+            {!isPinned && (
               <TouchableOpacity
                 style={styles.primaryButton}
                 activeOpacity={0.85}
                 onPress={handleSelect}
+                disabled={saving}
               >
-                <Text style={styles.primaryButtonText}>이 여행지로 정하기</Text>
+                {saving ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <Text style={styles.primaryButtonText}>이 여행지로 정하기</Text>
+                )}
               </TouchableOpacity>
             )}
-          </View>
+          </View>}
         </ScrollView>
       )}
     </SafeAreaView>

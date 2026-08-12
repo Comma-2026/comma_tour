@@ -20,6 +20,9 @@ export async function getPins(): Promise<Pin[]> {
 
 export async function savePin(pin: Pin): Promise<void> {
     const pins = await getPins();
+    if (pins.some((savedPin) => savedPin.contentId === pin.contentId)) {
+        return;
+    }
     pins.push(pin);
     await AsyncStorage.setItem(PINS_STORAGE_KEY, JSON.stringify(pins));
 }
