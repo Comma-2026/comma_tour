@@ -6,8 +6,10 @@ import random
 from spots import spots_model
 
 # 카드 목록에 노출할 필드(상세 정보는 detail 조회에서만 내려준다)
+# lat/lng: 프론트에서 내 위치 기준 거리(utils/distance)를 계산하는 데 쓴다.
 _CARD_FIELDS = [
-    "id", "name", "region", "icon", "imageUrl", "category", "tags", "shortDesc", "congestion", "distanceFromDaegu",
+    "id", "name", "region", "icon", "imageUrl", "category", "tags", "shortDesc", "congestion",
+    "distanceFromDaegu", "lat", "lng",
 ]
 
 # 지도 탭 전체 목록(카탈로그)용 필드 — 좌표 포함, 랜덤 샘플링 없이 전체를 그대로 내려준다

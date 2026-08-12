@@ -13,9 +13,11 @@ import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { fetchSpotDetail, type SpotDetail } from '@/api/spots';
+import { fetchDriveDistance, fetchSpotDetail, type SpotDetail } from '@/api/spots';
 import { Brand, Fonts } from '@/constants/theme';
+import type { CurrentLocation } from '@/types/location';
 import type { Pin } from '@/types/pin';
+import { estimateDrivingLabel } from '@/utils/distance';
 import { getCurrentLocation } from '@/utils/location';
 import { savePin } from '@/utils/pinStorage';
 
@@ -33,6 +35,8 @@ export default function SpotDetailScreen() {
   const [spot, setSpot] = useState<SpotDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [routing, setRouting] = useState(false);
+  // 거리 표시용 — 실패해도(권한 거부 등) 조용히 무시하고 서버가 준 대구 기준 거리로 폴백한다.
+  const [userLocation, setUserLocation] = useState<CurrentLocation | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -41,6 +45,32 @@ export default function SpotDetailScreen() {
       setLoading(false);
     });
   }, [id]);
+
+  useEffect(() => {
+    getCurrentLocation()
+      .then(setUserLocation)
+      .catch(() => setUserLocation(null));
+  }, []);
+
+  // 즉시 뜨는 직선거리 근사치 → 카카오모빌리티 실제 도로 거리가 도착하면 조용히 교체.
+  const [driveLabel, setDriveLabel] = useState<string | null>(null);
+  useEffect(() => {
+    setDriveLabel(null);
+    if (!spot || !userLocation) return;
+    let cancelled = false;
+    fetchDriveDistance(userLocation, spot.lat, spot.lng).then((result) => {
+      if (!cancelled && result) setDriveLabel(result.label);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [spot?.id, userLocation]);
+
+  const distanceLabel =
+    driveLabel ??
+    (spot && userLocation
+      ? estimateDrivingLabel(userLocation, { lat: spot.lat, lng: spot.lng }).label
+      : spot?.distanceFromDaegu);
 
   /**
    * 카카오맵 길찾기. expo-location으로 현재 위치를 받아 출발지로,
@@ -153,7 +183,7 @@ export default function SpotDetailScreen() {
             <InfoRow label="주차" value={spot.hasParking ? 'O' : 'X'} />
             <InfoRow label="이용권" value={spot.admissionFee} />
             <InfoRow label="영업시간" value={spot.businessHours} />
-            <InfoRow label="거리" value={spot.distanceFromDaegu} last />
+            <InfoRow label="거리" value={distanceLabel ?? spot.distanceFromDaegu} last />
           </View>
 
           <View style={styles.actionRow}>

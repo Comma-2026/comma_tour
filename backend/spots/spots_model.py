@@ -111,6 +111,9 @@ _SOURCE_CONTENT_TYPES: dict[int, dict] = {
 
 _CONGESTION_BASE_URL = "https://apis.data.go.kr/B551011/TatsCnctrRateService"
 _WELLNESS_BASE_URL = "https://apis.data.go.kr/B551011/WellnessTursmService"
+# 제휴 전용(/affiliate/v1/directions)이 아니라 일반 REST 키로 열리는 엔드포인트.
+# (/affiliate/ 버전은 403 permission denied — 제휴 계약 필요한 별도 상품이다.)
+_KAKAO_DIRECTIONS_URL = "https://apis-navi.kakaomobility.com/v1/directions"
 
 # lclsSystmCode2(1Depth, 파라미터 없이 호출)로 실제 확인한 공식 코드 → 우리 태그 매핑.
 # areaBasedList2/detailCommon2 응답에 lclsSystm1으로 이미 들어있어서 추가 호출 없이 바로 쓴다.
@@ -186,6 +189,38 @@ def _estimate_distance_from_daegu(lat: float, lng: float) -> tuple[str, int]:
     hours, mins = divmod(minutes, 60)
     label = f"대구에서 {hours}시간 {mins}분" if hours else f"대구에서 {mins}분"
     return label, minutes
+
+
+def fetch_drive_route(origin_lat: float, origin_lng: float, dest_lat: float, dest_lng: float) -> dict | None:
+    """카카오모빌리티 자동차 길찾기로 실제 도로 거리/시간을 구한다.
+
+    프론트가 매번 사용자 GPS 좌표를 보내오므로(관광지 목록처럼 서버에 미리 캐싱해둘 수 없음)
+    요청 시점에 직접 호출한다. 실패(네트워크 오류, 키 미설정 등)하면 None을 반환하고,
+    호출부(라우트)에서 이를 그대로 프론트에 알려 프론트가 직선거리 근사치로 폴백하게 한다.
+    """
+    if not config.KAKAO_REST_API_KEY:
+        return None
+    try:
+        res = requests.get(
+            _KAKAO_DIRECTIONS_URL,
+            params={
+                "origin": f"{origin_lng},{origin_lat}",
+                "destination": f"{dest_lng},{dest_lat}",
+            },
+            headers={"Authorization": f"KakaoAK {config.KAKAO_REST_API_KEY}"},
+            timeout=10,
+        )
+        res.raise_for_status()
+        summary = res.json()["routes"][0]["summary"]
+        duration_seconds = int(summary["duration"])
+        distance_meters = int(summary["distance"])
+    except (requests.RequestException, KeyError, IndexError, ValueError):
+        return None
+
+    minutes = max(1, round(duration_seconds / 60))
+    hours, mins = divmod(minutes, 60)
+    label = f"현재 위치로부터 {hours}시간 {mins}분" if hours else f"현재 위치로부터 {mins}분"
+    return {"label": label, "minutes": minutes, "distanceMeters": distance_meters}
 
 
 def _tour_api_get(operation: str, **params) -> list[dict]:

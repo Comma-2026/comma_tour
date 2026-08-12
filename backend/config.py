@@ -59,6 +59,10 @@ class Config:
     # (일일 트래픽 1000회 제한 보호용 — 요청마다 실제 API를 다시 부르지 않도록)
     SPOT_CACHE_TTL_SECONDS = int(os.getenv("SPOT_CACHE_TTL_SECONDS", "3600"))
 
+    # --- 카카오모빌리티 자동차 길찾기(Directions) API ---
+    # 내 위치 → 관광지 자동차 이동거리/시간 조회용. 카카오디벨로퍼스 REST API 키.
+    KAKAO_REST_API_KEY = os.getenv("KAKAO_REST_API_KEY")
+
     # --- 다이어리 저장 백엔드 ---
     #   json  : diaries_data.json 파일 (기본, DB 불필요)
     #   mysql : MySQL 데이터베이스 (일기 내용 + 사진을 한 행에 저장)
