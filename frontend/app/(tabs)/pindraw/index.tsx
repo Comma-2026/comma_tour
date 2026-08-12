@@ -5,6 +5,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
+    DEBUG_SOURCE_TYPES,
     FEEDBACK_TAGS,
     PREFERENCE_TAG_GROUPS,
     fetchAvailableRegions,
@@ -30,6 +31,8 @@ export default function PinDrawScreen() {
     const [preference, setPreference] = useState<Set<string>>(new Set());
     const [regions, setRegions] = useState<string[]>([]);
     const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
+    // 디버그용 — 12/14/28/38 각 출처가 실제로 잘 불러와졌는지 확인할 때만 쓴다.
+    const [debugSourceType, setDebugSourceType] = useState<number | null>(null);
 
     useEffect(() => {
         fetchAvailableRegions().then(setRegions);
@@ -46,7 +49,7 @@ export default function PinDrawScreen() {
             setLoading(true);
             setError(false);
             const tags = [...preference, ...roundFeedbackTags];
-            const spots = await fetchRecommendedSpots(excludeIds, tags, selectedRegion);
+            const spots = await fetchRecommendedSpots(excludeIds, tags, selectedRegion, debugSourceType);
             if (spots.length === 0) {
                 setError(true);
             } else {
@@ -56,7 +59,7 @@ export default function PinDrawScreen() {
             }
             setLoading(false);
         },
-        [preference, selectedRegion],
+        [preference, selectedRegion, debugSourceType],
     );
 
     // 설문을 마치면 그 선호를 반영해 첫 3장을 뽑는다.
@@ -82,6 +85,7 @@ export default function PinDrawScreen() {
         setSurveyDone(false);
         setPreference(new Set());
         setSelectedRegion(null);
+        setDebugSourceType(null);
         setCards([]);
         setIndex(0);
         setFeedback(new Set());
@@ -210,6 +214,43 @@ export default function PinDrawScreen() {
                                 )}
                             </View>
                         ))}
+
+                        <View style={styles.surveyGroup}>
+                            <Text style={styles.surveyGroupTitle}>🔧 (테스트) 출처별로만 뽑기</Text>
+                            <View style={styles.chipRow}>
+                                <TouchableOpacity
+                                    style={[styles.chip, debugSourceType === null && styles.chipSelected]}
+                                    activeOpacity={0.8}
+                                    onPress={() => setDebugSourceType(null)}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.chipText,
+                                            debugSourceType === null && styles.chipTextSelected,
+                                        ]}
+                                    >
+                                        전체
+                                    </Text>
+                                </TouchableOpacity>
+                                {DEBUG_SOURCE_TYPES.map((type) => {
+                                    const selected = debugSourceType === type.id;
+                                    return (
+                                        <TouchableOpacity
+                                            key={type.id}
+                                            style={[styles.chip, selected && styles.chipSelected]}
+                                            activeOpacity={0.8}
+                                            onPress={() => setDebugSourceType(type.id)}
+                                        >
+                                            <Text
+                                                style={[styles.chipText, selected && styles.chipTextSelected]}
+                                            >
+                                                {type.label}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
+                        </View>
                     </ScrollView>
 
                     <TouchableOpacity

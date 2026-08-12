@@ -19,7 +19,10 @@ def recommend_route():
     exclude_ids = [x for x in request.args.get("exclude", "").split(",") if x]
     feedback_tags = [x for x in request.args.get("feedback", "").split(",") if x]
     region = request.args.get("region") or None
-    spots = recommend_spots(exclude_ids, feedback_tags, region)
+    # 디버그용 — 12/14/28/38 각 출처가 실제로 잘 불러와졌는지 확인할 때만 쓴다.
+    source_type_raw = request.args.get("sourceType")
+    source_content_type = int(source_type_raw) if source_type_raw else None
+    spots = recommend_spots(exclude_ids, feedback_tags, region, source_content_type=source_content_type)
     return jsonify({"spots": spots})
 
 
