@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, BackHandler, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
@@ -13,7 +14,7 @@ import {
     type SpotCard,
 } from '@/api/spots';
 import { Brand, Fonts } from '@/constants/theme';
-import { registerPindrawSession } from '@/utils/pindrawSession';
+import { confirmResetIfNeeded, registerPindrawSession } from '@/utils/pindrawSession';
 
 const ScreenTheme = {
     background: '#f9f8f2',
@@ -95,6 +96,19 @@ export default function PinDrawScreen() {
     useEffect(() => {
         registerPindrawSession(() => surveyDoneRef.current, resetToSurvey);
     }, [resetToSurvey]);
+
+    // 안드로이드 하드웨어 뒤로가기도 탭 전환과 똑같이 가로챈다 — 진행 중인 뽑기가 있으면
+    // 초기화 확인창을 띄우고, 없으면(surveyDoneRef.current === false) 원래 뒤로가기 동작 그대로 둔다.
+    useFocusEffect(
+        useCallback(() => {
+            const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+                if (!surveyDoneRef.current) return false;
+                confirmResetIfNeeded(() => router.back());
+                return true;
+            });
+            return () => subscription.remove();
+        }, [router]),
+    );
 
     const current = cards[index];
 
@@ -268,7 +282,7 @@ export default function PinDrawScreen() {
     return (
         <SafeAreaView style={styles.safe} edges={['top']}>
             <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()}>
+                <TouchableOpacity onPress={() => confirmResetIfNeeded(() => router.back())}>
                     <Text style={styles.headerIcon}>‹</Text>
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>쉼표 뽑기</Text>
