@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+    ActivityIndicator,
     FlatList,
     ScrollView,
     StyleSheet,
@@ -12,10 +13,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import WebView, { type WebViewMessageEvent } from 'react-native-webview';
 import { useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 
 import { API_BASE_URL } from '@/constants/api';
-import { spotMarkers } from '@/constants/SpotMockData';
+import { CATEGORY_EMOJI, CATEGORY_ICON_BG, CATEGORY_LABEL, toSpotCategory } from '@/constants/spotCategory';
 import { Fonts } from '@/constants/theme';
+import type { Pin } from '@/types/pin';
 import type { SpotCategory, SpotMarker } from '@/types/spot';
 import { getPins } from '@/utils/pinStorage';
 
@@ -32,35 +36,29 @@ const KAKAO_MAP_KEY = process.env.EXPO_PUBLIC_KAKAO_MAP_KEY;
 // 경상북도 중심 좌표
 const GYEONGBUK_CENTER = { lat: 36.576, lng: 128.5056 };
 
-const CATEGORY_EMOJI: Record<SpotCategory, string> = {
-    nature: '🏔',
-    culture: '🏛',
-    night: '🌃',
-    etc: '📍',
-};
-
-const CATEGORY_LABEL: Record<SpotCategory, string> = {
-    nature: '자연',
-    culture: '문화',
-    night: '야경',
-    etc: '기타',
-};
-
-const CATEGORY_ICON_BG: Record<SpotCategory, string> = {
-    nature: '#e3f0e6',
-    culture: '#f1e6da',
-    night: '#1f2a44',
-    etc: '#eceae3',
-};
-
 type CategoryFilter = 'all' | SpotCategory;
 
+// 야경은 뺐다 — 국문관광정보 분류 체계엔 "시간대(밤에 보기 좋음)" 속성이 없어서 실데이터로 못 채운다.
 const CATEGORY_TABS: { key: CategoryFilter; label: string }[] = [
     { key: 'all', label: '전체' },
     { key: 'nature', label: '자연' },
+    { key: 'history', label: '역사' },
     { key: 'culture', label: '문화' },
-    { key: 'night', label: '야경' },
+    { key: 'experience', label: '체험' },
 ];
+
+function toSpotMarker(pin: Pin): SpotMarker {
+    return {
+        id: pin.id,
+        contentId: pin.contentId,
+        place_name: pin.place_name,
+        region: pin.region,
+        category: toSpotCategory(pin.category),
+        latitude: pin.latitude,
+        longitude: pin.longitude,
+        description: pin.phrase ?? pin.memo ?? `${pin.visited_at}에 방문`,
+    };
+}
 
 function buildMapHtml(appkey: string): string {
     return `<!DOCTYPE html>
@@ -96,7 +94,7 @@ function buildMapHtml(appkey: string): string {
     onerror="showStatus('카카오맵 SDK 스크립트 로드 실패 (네트워크 연결 또는 앱키 확인)')"
   ></script>
   <script>
-    const CATEGORY_EMOJI = { nature: '🏔', culture: '🏛', night: '🌃', etc: '📍' };
+    const CATEGORY_EMOJI = { nature: '🏔', history: '⛩', culture: '🏙', experience: '🎨', night: '🌃', etc: '📍' };
 
     const MAX_WAIT_MS = 8000;
     const POLL_INTERVAL_MS = 200;
@@ -149,11 +147,19 @@ function buildMapHtml(appkey: string): string {
         el.style.fontSize = '26px';
         el.style.lineHeight = '1';
         el.style.cursor = 'pointer';
-        el.style.transform = 'translate(-50%, -100%)';
 
+        // 이모지 글꼴은 글리프 아래쪽(베이스라인 아래)에 자체 여백이 있어, 박스 맨아래(=좌표)보다
+        // 그림이 살짝 떠 보인다. 보이는 그림의 아래끝이 좌표에 닿도록 아래로 미세 보정한다.
+        // (% 기준 = 아이콘 높이 26px. 어긋나 보이면 카테고리별로 이 값만 조정하면 된다)
+        const EMOJI_NUDGE_Y = { nature: '12%', culture: '12%', night: '12%', etc: '10%' };
+        el.style.transform = 'translateY(' + (EMOJI_NUDGE_Y[spot.category] || '10%') + ')';
+
+        // 위치 지정은 CustomOverlay의 anchor로 한다(xAnchor 0.5 = 가로 중앙, yAnchor 1 = 세로 맨아래).
+        // 위 translateY는 글꼴 여백 보정용 소량 이동일 뿐, 앵커를 대신하면 안 된다.
         const overlay = new kakao.maps.CustomOverlay({
           position: position,
           content: el,
+          xAnchor: 0.5,
           yAnchor: 1,
         });
         overlay.setMap(map);
@@ -262,31 +268,51 @@ function buildMapHtml(appkey: string): string {
 </html>`;
 }
 
-function SpotCard({ spot, onPress }: { spot: SpotMarker; onPress: () => void }) {
+function SpotCard({
+    spot,
+    onPress,
+    onDetailPress,
+}: {
+    spot: SpotMarker;
+    onPress: () => void;
+    onDetailPress: () => void;
+}) {
     return (
-        <TouchableOpacity style={styles.card} activeOpacity={0.85} onPress={onPress}>
-            <View style={[styles.cardIcon, { backgroundColor: CATEGORY_ICON_BG[spot.category] }]}>
-                <Text style={styles.cardIconText}>{CATEGORY_EMOJI[spot.category]}</Text>
-            </View>
-            <View style={styles.cardBody}>
-                <View style={styles.cardTitleRow}>
-                    <Text style={styles.cardTitle} numberOfLines={1}>
-                        {spot.place_name}
-                    </Text>
-                    <View style={styles.cardTagPill}>
-                        <Text style={styles.cardTagText}>{CATEGORY_LABEL[spot.category]}</Text>
-                    </View>
+        <View style={styles.card}>
+            <TouchableOpacity style={styles.cardMain} activeOpacity={0.85} onPress={onPress}>
+                <View style={[styles.cardIcon, { backgroundColor: CATEGORY_ICON_BG[spot.category] }]}>
+                    <Text style={styles.cardIconText}>{CATEGORY_EMOJI[spot.category]}</Text>
                 </View>
-                <Text style={styles.cardRegion}>📍 {spot.region}</Text>
-                <Text style={styles.cardDesc} numberOfLines={2}>
-                    {spot.description}
-                </Text>
-            </View>
-        </TouchableOpacity>
+                <View style={styles.cardBody}>
+                    <View style={styles.cardTitleRow}>
+                        <Text style={styles.cardTitle} numberOfLines={1}>
+                            {spot.place_name}
+                        </Text>
+                        <View style={styles.cardTagPill}>
+                            <Text style={styles.cardTagText}>{CATEGORY_LABEL[spot.category]}</Text>
+                        </View>
+                    </View>
+                    <Text style={styles.cardRegion}>📍 {spot.region}</Text>
+                    <Text style={styles.cardDesc} numberOfLines={2}>
+                        {spot.description}
+                    </Text>
+                </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+                style={styles.detailButton}
+                activeOpacity={0.7}
+                onPress={onDetailPress}
+                accessibilityRole="button"
+                accessibilityLabel={`${spot.place_name} 상세보기`}
+            >
+                <Ionicons name="chevron-forward" size={22} color={ScreenTheme.deepGreen} />
+            </TouchableOpacity>
+        </View>
     );
 }
 
 export default function MapScreen() {
+    const router = useRouter();
     const { height: windowHeight } = useWindowDimensions();
     const mapHeight = windowHeight * 0.37;
 
@@ -297,22 +323,27 @@ export default function MapScreen() {
     const [mapReady, setMapReady] = useState(false);
     const [searchText, setSearchText] = useState('');
     const [category, setCategory] = useState<CategoryFilter>('all');
+    const [spots, setSpots] = useState<SpotMarker[]>([]);
+    const [pinsLoading, setPinsLoading] = useState(true);
 
     const html = useMemo(
         () => (KAKAO_MAP_KEY ? buildMapHtml(KAKAO_MAP_KEY) : ''),
         [],
     );
 
+    // 탭에 다시 들어올 때마다 새로고침 — 쉼표뽑기에서 방금 찍은 핀도 바로 보이도록.
     useFocusEffect(
         useCallback(() => {
-            // TODO: "내가 방문한 곳" 강조 표시 확장용 — 지금은 조회만 해두고 렌더링엔 미사용
-            getPins();
+            getPins().then((pins) => {
+                setSpots(pins.map(toSpotMarker));
+                setPinsLoading(false);
+            });
         }, []),
     );
 
     const filteredSpots = useMemo(() => {
         const query = searchText.trim();
-        return spotMarkers.filter((spot) => {
+        return spots.filter((spot) => {
             if (category !== 'all' && spot.category !== category) {
                 return false;
             }
@@ -325,7 +356,7 @@ export default function MapScreen() {
                 CATEGORY_LABEL[spot.category].includes(query)
             );
         });
-    }, [searchText, category]);
+    }, [spots, searchText, category]);
 
     useEffect(() => {
         if (mapReady) {
@@ -361,6 +392,12 @@ export default function MapScreen() {
         );
     };
 
+    const handleDetailPress = (spot: SpotMarker) => {
+        // 핀 기록 화면의 카드 화살표(>)와 동일한 읽기 전용 상세로 연다
+        // (from: 'records' → "이 여행지로 정하기" 버튼 없이 길찾기만).
+        router.push({ pathname: '/pindraw/detail', params: { id: spot.contentId, from: 'records' } });
+    };
+
     if (!KAKAO_MAP_KEY) {
         return (
             <View style={styles.container}>
@@ -377,84 +414,114 @@ export default function MapScreen() {
         <SafeAreaView style={styles.safe} edges={['top']}>
             <View style={styles.header}>
                 <Text style={styles.headerLabel}>지도</Text>
-                <Text style={styles.headerCount}>경상북도 {filteredSpots.length}곳</Text>
+                <Text style={styles.headerCount}>내 핀 {spots.length}곳</Text>
             </View>
 
             <View style={styles.searchBar}>
                 <Text style={styles.searchIcon}>🔍</Text>
                 <TextInput
                     style={styles.searchInput}
-                    placeholder="관광지 이름, 지역, 태그로 검색"
+                    placeholder="찍은 핀 이름, 지역으로 검색"
                     placeholderTextColor={ScreenTheme.muted}
                     value={searchText}
                     onChangeText={setSearchText}
                 />
             </View>
 
-            <View style={[styles.mapWrap, { height: mapHeight }]}>
-                <WebView
-                    ref={webViewRef}
-                    originWhitelist={['*']}
-                    source={{ html, baseUrl: API_BASE_URL }}
-                    javaScriptEnabled
-                    domStorageEnabled
-                    onMessage={handleMessage}
-                    onError={() => setLoadFailed(true)}
-                    style={styles.webview}
-                />
-                {loadFailed && (
-                    <View style={styles.errorOverlay}>
-                        <Text style={styles.desc}>지도를 불러오지 못했어요. 네트워크 상태를 확인해주세요.</Text>
+            {pinsLoading ? (
+                <View style={styles.catalogLoadingBox}>
+                    <ActivityIndicator color={ScreenTheme.deepGreen} />
+                    <Text style={styles.desc}>핀 기록을 불러오는 중이에요…</Text>
+                </View>
+            ) : spots.length === 0 ? (
+                <View style={styles.catalogLoadingBox}>
+                    <Text style={styles.emptyIcon}>📍</Text>
+                    <Text style={styles.desc}>
+                        아직 찍은 핀이 없어요.{'\n'}쉼표뽑기에서 마음에 드는 곳을 핀으로 남겨보세요.
+                    </Text>
+                </View>
+            ) : (
+                <>
+                    <View style={[styles.mapWrap, { height: mapHeight }]}>
+                        <WebView
+                            ref={webViewRef}
+                            originWhitelist={['*']}
+                            source={{ html, baseUrl: API_BASE_URL }}
+                            javaScriptEnabled
+                            domStorageEnabled
+                            onMessage={handleMessage}
+                            onError={() => setLoadFailed(true)}
+                            style={styles.webview}
+                        />
+                        {loadFailed && (
+                            <View style={styles.errorOverlay}>
+                                <Text style={styles.desc}>지도를 불러오지 못했어요. 네트워크 상태를 확인해주세요.</Text>
+                            </View>
+                        )}
                     </View>
-                )}
-            </View>
 
-            <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.categoryScroll}
-                contentContainerStyle={styles.categoryRow}
-            >
-                {CATEGORY_TABS.map((tab) => {
-                    const selected = category === tab.key;
-                    return (
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        style={styles.categoryScroll}
+                        contentContainerStyle={styles.categoryRow}
+                    >
+                        {CATEGORY_TABS.map((tab) => {
+                            const selected = category === tab.key;
+                            return (
+                                <TouchableOpacity
+                                    key={tab.key}
+                                    style={[styles.categoryPill, selected && styles.categoryPillSelected]}
+                                    activeOpacity={0.85}
+                                    onPress={() => setCategory(tab.key)}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.categoryPillText,
+                                            selected && styles.categoryPillTextSelected,
+                                        ]}
+                                    >
+                                        {tab.label}
+                                    </Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </ScrollView>
+
+                    <View style={styles.resultHeader}>
+                        <Text style={styles.resultCount}>{filteredSpots.length}개의 장소</Text>
                         <TouchableOpacity
-                            key={tab.key}
-                            style={[styles.categoryPill, selected && styles.categoryPillSelected]}
-                            activeOpacity={0.85}
-                            onPress={() => setCategory(tab.key)}
+                            activeOpacity={0.7}
+                            onPress={() => router.push('/pin-records')}
+                            accessibilityRole="button"
+                            accessibilityLabel="핀 기록 전체보기"
                         >
-                            <Text
-                                style={[
-                                    styles.categoryPillText,
-                                    selected && styles.categoryPillTextSelected,
-                                ]}
-                            >
-                                {tab.label}
-                            </Text>
+                            <Text style={styles.recordsButtonText}>전체보기 ›</Text>
                         </TouchableOpacity>
-                    );
-                })}
-            </ScrollView>
+                    </View>
 
-            <Text style={styles.resultCount}>{filteredSpots.length}개의 장소</Text>
-
-            <FlatList
-                ref={flatListRef}
-                style={styles.list}
-                data={filteredSpots}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => (
-                    <SpotCard spot={item} onPress={() => handleCardPress(item)} />
-                )}
-                contentContainerStyle={styles.listContent}
-                onScrollToIndexFailed={(info) => {
-                    flatListRef.current?.scrollToOffset({
-                        offset: info.averageItemLength * info.index,
-                        animated: true,
-                    });
-                }}
-            />
+                    <FlatList
+                        ref={flatListRef}
+                        style={styles.list}
+                        data={filteredSpots}
+                        keyExtractor={(item) => item.id}
+                        renderItem={({ item }) => (
+                            <SpotCard
+                                spot={item}
+                                onPress={() => handleCardPress(item)}
+                                onDetailPress={() => handleDetailPress(item)}
+                            />
+                        )}
+                        contentContainerStyle={styles.listContent}
+                        onScrollToIndexFailed={(info) => {
+                            flatListRef.current?.scrollToOffset({
+                                offset: info.averageItemLength * info.index,
+                                animated: true,
+                            });
+                        }}
+                    />
+                </>
+            )}
         </SafeAreaView>
     );
 }
@@ -485,6 +552,11 @@ const styles = StyleSheet.create({
     headerCount: {
         fontSize: 11,
         fontWeight: '700',
+        color: ScreenTheme.deepGreen,
+    },
+    recordsButtonText: {
+        fontSize: 13,
+        fontWeight: '800',
         color: ScreenTheme.deepGreen,
     },
     searchBar: {
@@ -531,6 +603,16 @@ const styles = StyleSheet.create({
         paddingHorizontal: 24,
         backgroundColor: ScreenTheme.background,
     },
+    catalogLoadingBox: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        paddingHorizontal: 24,
+    },
+    emptyIcon: {
+        fontSize: 32,
+    },
     categoryScroll: {
         marginTop: 12,
         flexGrow: 0,
@@ -558,10 +640,15 @@ const styles = StyleSheet.create({
     categoryPillTextSelected: {
         color: '#ffffff',
     },
-    resultCount: {
+    resultHeader: {
         marginTop: 12,
         marginBottom: 8,
         paddingHorizontal: 20,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    resultCount: {
         fontSize: 12,
         fontWeight: '700',
         color: ScreenTheme.muted,
@@ -576,7 +663,6 @@ const styles = StyleSheet.create({
     card: {
         flexDirection: 'row',
         marginBottom: 12,
-        padding: 12,
         borderRadius: 16,
         backgroundColor: ScreenTheme.card,
         shadowColor: '#000',
@@ -584,6 +670,21 @@ const styles = StyleSheet.create({
         shadowRadius: 10,
         shadowOffset: { width: 0, height: 5 },
         elevation: 2,
+    },
+    cardMain: {
+        flex: 1,
+        flexDirection: 'row',
+        padding: 12,
+    },
+    detailButton: {
+        width: 52,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderLeftWidth: 1,
+        borderLeftColor: '#eef0eb',
+        borderTopRightRadius: 16,
+        borderBottomRightRadius: 16,
+        backgroundColor: '#ffffff',
     },
     cardIcon: {
         width: 44,

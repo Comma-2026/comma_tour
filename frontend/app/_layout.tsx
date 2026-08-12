@@ -3,6 +3,8 @@ import {
   DefaultTheme,
   ThemeProvider,
 } from '@react-navigation/native';
+import { NotoSerifKR_500Medium } from '@expo-google-fonts/noto-serif-kr';
+import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
@@ -15,6 +17,11 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const [fontsLoaded] = useFonts({ NotoSerifKR_500Medium });
+
+  if (!fontsLoaded) {
+    return null;
+  }
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
@@ -29,6 +36,8 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         {/* 홈 "최근 핀 기록 · 전체 보기" */}
         <Stack.Screen name="pin-records" options={{ headerShown: false }} />
+        {/* 홈 "장소 검색" */}
+        <Stack.Screen name="search" options={{ headerShown: false }} />
         {/* 다이어리 일기 상세(읽기) */}
         <Stack.Screen name="diary-detail" options={{ headerShown: false }} />
         {/* 다이어리 일기 작성/수정 */}

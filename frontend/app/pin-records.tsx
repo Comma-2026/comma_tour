@@ -1,12 +1,15 @@
 import { useCallback, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { GestureHandlerRootView, Swipeable } from 'react-native-gesture-handler';
 
+import { categoryEmojiFor } from '@/constants/spotCategory';
 import { Brand, Fonts } from '@/constants/theme';
 import type { Pin } from '@/types/pin';
-import { getPins } from '@/utils/pinStorage';
+import { deletePin, getPins } from '@/utils/pinStorage';
+import Svg, { Path } from 'react-native-svg';
 
 const ScreenTheme = {
     background: '#f9f8f2',
@@ -23,6 +26,61 @@ function pad2(n: number): string {
 
 function dateKey(year: number, month0: number, day: number): string {
     return `${year}-${pad2(month0 + 1)}-${pad2(day)}`;
+}
+
+function SwipeablePinCard({
+    pin,
+    onPress,
+    onDelete,
+}: {
+    pin: Pin;
+    onPress: () => void;
+    onDelete: () => void;
+}) {
+    const renderRightActions = () => (
+        <View style={styles.deleteAction}>
+            <TouchableOpacity
+                style={styles.deleteActionButton}
+                activeOpacity={0.85}
+                onPress={onDelete}
+                accessibilityRole="button"
+                accessibilityLabel={`${pin.place_name} 삭제`}
+            >
+                <View style={styles.deleteActionIconWrap}>
+                    <Svg width={24} height={24} viewBox="0 0 16 16" fill="white">
+                        <Path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z" fill="white" />
+                        <Path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z" fill="white" />
+                    </Svg>
+                </View>
+            </TouchableOpacity>
+        </View>
+    );
+
+    return (
+        <Swipeable renderRightActions={renderRightActions} overshootRight={false}>
+            <TouchableOpacity
+                style={styles.pinCard}
+                activeOpacity={0.82}
+                onPress={onPress}
+            >
+                <View style={styles.pinIconBox}>
+                    <Text style={styles.pinIcon}>{categoryEmojiFor(pin.category)}</Text>
+                </View>
+                <View style={styles.pinContent}>
+                    <Text style={styles.pinTitle} numberOfLines={1}>
+                        {pin.place_name}
+                    </Text>
+                    <Text style={styles.pinRegion}>{pin.region}</Text>
+                    {(pin.phrase || pin.memo) && (
+                        <Text style={styles.pinMemo} numberOfLines={2}>
+                            {pin.phrase ?? pin.memo}
+                        </Text>
+                    )}
+                </View>
+                <Text style={styles.pinArrow}>›</Text>
+            </TouchableOpacity>
+        </Swipeable>
+    );
 }
 
 /** month0은 0~11(JS Date 규칙). 앞뒤 빈 칸을 null로 채운 7일 단위 주 배열을 반환. */
@@ -113,136 +171,140 @@ export default function PinRecordsScreen() {
         setSelectedDate((prev) => (prev === key ? null : key));
     };
 
+    const handleDeletePin = (pinId: string) => {
+        Alert.alert('핀 삭제', '이 저장된 핀을 삭제할까요?', [
+            { text: '취소', style: 'cancel' },
+            {
+                text: '삭제',
+                style: 'destructive',
+                onPress: async () => {
+                    await deletePin(pinId);
+                    setPins((prev) => prev.filter((pin) => pin.id !== pinId));
+                },
+            },
+        ]);
+    };
+
     return (
-        <SafeAreaView style={styles.safe} edges={['top']}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => router.back()}>
-                    <Text style={styles.headerIcon}>‹</Text>
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>핀 기록</Text>
-                <View style={styles.headerIcon} />
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-                <View style={styles.calendarCard}>
-                    <View style={styles.monthNav}>
-                        <TouchableOpacity style={styles.monthNavButton} onPress={goPrevMonth}>
-                            <Text style={styles.monthNavIcon}>‹</Text>
-                        </TouchableOpacity>
-                        <Text style={styles.monthLabel}>
-                            {viewYear}년 {viewMonth + 1}월
-                        </Text>
-                        <TouchableOpacity style={styles.monthNavButton} onPress={goNextMonth}>
-                            <Text style={styles.monthNavIcon}>›</Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    <View style={styles.weekdayRow}>
-                        {WEEKDAY_LABELS.map((label) => (
-                            <Text key={label} style={styles.weekdayLabel}>
-                                {label}
-                            </Text>
-                        ))}
-                    </View>
-
-                    {weeks.map((week, weekIndex) => (
-                        <View key={weekIndex} style={styles.weekRow}>
-                            {week.map((day, dayIndex) => {
-                                if (day === null) {
-                                    return <View key={dayIndex} style={styles.dayCell} />;
-                                }
-                                const key = dateKey(viewYear, viewMonth, day);
-                                const hasPins = Boolean(pinsByDate[key]);
-                                const selected = selectedDate === key;
-                                const isToday = key === todayKey;
-                                return (
-                                    <TouchableOpacity
-                                        key={dayIndex}
-                                        style={styles.dayCell}
-                                        activeOpacity={hasPins ? 0.7 : 1}
-                                        onPress={() => handleDayPress(day)}
-                                    >
-                                        <View
-                                            style={[
-                                                styles.dayCircle,
-                                                selected && styles.dayCircleSelected,
-                                                isToday && !selected && styles.dayCircleToday,
-                                            ]}
-                                        >
-                                            <Text
-                                                style={[
-                                                    styles.dayText,
-                                                    !hasPins && styles.dayTextMuted,
-                                                    selected && styles.dayTextSelected,
-                                                ]}
-                                            >
-                                                {day}
-                                            </Text>
-                                        </View>
-                                        {hasPins && <View style={[styles.dayDot, selected && styles.dayDotSelected]} />}
-                                    </TouchableOpacity>
-                                );
-                            })}
-                        </View>
-                    ))}
+        <GestureHandlerRootView style={styles.gestureRoot}>
+            <SafeAreaView style={styles.safe} edges={['top']}>
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={() => router.back()}>
+                        <Text style={styles.headerIcon}>‹</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>핀 기록</Text>
+                    <View style={styles.headerIcon} />
                 </View>
 
-                {selectedDate && (
-                    <TouchableOpacity style={styles.clearFilterRow} onPress={() => setSelectedDate(null)}>
-                        <Text style={styles.clearFilterText}>{selectedDate} 선택 해제 ✕</Text>
-                    </TouchableOpacity>
-                )}
-
-                {groupedEntries.length === 0 && (
-                    <View style={styles.emptyBox}>
-                        <Text style={styles.emptyText}>
-                            {selectedDate
-                                ? '이 날짜엔 핀 기록이 없어요.'
-                                : `${viewYear}년 ${viewMonth + 1}월엔 핀 기록이 없어요.`}
-                        </Text>
-                    </View>
-                )}
-
-                {groupedEntries.map(([date, pinsForDate]) => (
-                    <View key={date} style={styles.dateGroup}>
-                        <Text style={styles.dateGroupLabel}>{date}</Text>
-                        {pinsForDate.map((pin) => (
-                            <TouchableOpacity
-                                key={pin.id}
-                                style={styles.pinCard}
-                                activeOpacity={0.82}
-                                onPress={() =>
-                                    router.push({
-                                        pathname: '/pindraw/detail',
-                                        params: { id: pin.contentId, from: 'records' },
-                                    })
-                                }
-                            >
-                                <View style={styles.pinIconBox}>
-                                    <Text style={styles.pinIcon}>📍</Text>
-                                </View>
-                                <View style={styles.pinContent}>
-                                    <Text style={styles.pinTitle} numberOfLines={1}>
-                                        {pin.place_name}
-                                    </Text>
-                                    <Text style={styles.pinRegion}>{pin.region}</Text>
-                                    {(pin.phrase || pin.memo) && (
-                                        <Text style={styles.pinMemo} numberOfLines={2}>
-                                            {pin.phrase ?? pin.memo}
-                                        </Text>
-                                    )}
-                                </View>
-                                <Text style={styles.pinArrow}>›</Text>
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+                    <View style={styles.calendarCard}>
+                        <View style={styles.monthNav}>
+                            <TouchableOpacity style={styles.monthNavButton} onPress={goPrevMonth}>
+                                <Text style={styles.monthNavIcon}>‹</Text>
                             </TouchableOpacity>
+                            <Text style={styles.monthLabel}>
+                                {viewYear}년 {viewMonth + 1}월
+                            </Text>
+                            <TouchableOpacity style={styles.monthNavButton} onPress={goNextMonth}>
+                                <Text style={styles.monthNavIcon}>›</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.weekdayRow}>
+                            {WEEKDAY_LABELS.map((label) => (
+                                <Text key={label} style={styles.weekdayLabel}>
+                                    {label}
+                                </Text>
+                            ))}
+                        </View>
+
+                        {weeks.map((week, weekIndex) => (
+                            <View key={weekIndex} style={styles.weekRow}>
+                                {week.map((day, dayIndex) => {
+                                    if (day === null) {
+                                        return <View key={dayIndex} style={styles.dayCell} />;
+                                    }
+                                    const key = dateKey(viewYear, viewMonth, day);
+                                    const hasPins = Boolean(pinsByDate[key]);
+                                    const selected = selectedDate === key;
+                                    const isToday = key === todayKey;
+                                    return (
+                                        <TouchableOpacity
+                                            key={dayIndex}
+                                            style={styles.dayCell}
+                                            activeOpacity={hasPins ? 0.7 : 1}
+                                            onPress={() => handleDayPress(day)}
+                                        >
+                                            <View
+                                                style={[
+                                                    styles.dayCircle,
+                                                    selected && styles.dayCircleSelected,
+                                                    isToday && !selected && styles.dayCircleToday,
+                                                ]}
+                                            >
+                                                <Text
+                                                    style={[
+                                                        styles.dayText,
+                                                        !hasPins && styles.dayTextMuted,
+                                                        selected && styles.dayTextSelected,
+                                                    ]}
+                                                >
+                                                    {day}
+                                                </Text>
+                                            </View>
+                                            {hasPins && <View style={[styles.dayDot, selected && styles.dayDotSelected]} />}
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
                         ))}
                     </View>
-                ))}
-            </ScrollView>
-        </SafeAreaView>
+
+                    {selectedDate && (
+                        <TouchableOpacity style={styles.clearFilterRow} onPress={() => setSelectedDate(null)}>
+                            <Text style={styles.clearFilterText}>{selectedDate} 선택 해제 ✕</Text>
+                        </TouchableOpacity>
+                    )}
+
+                    {groupedEntries.length === 0 && (
+                        <View style={styles.emptyBox}>
+                            <Text style={styles.emptyText}>
+                                {selectedDate
+                                    ? '이 날짜엔 핀 기록이 없어요.'
+                                    : `${viewYear}년 ${viewMonth + 1}월엔 핀 기록이 없어요.`}
+                            </Text>
+                        </View>
+                    )}
+
+                    {groupedEntries.map(([date, pinsForDate]) => (
+                        <View key={date} style={styles.dateGroup}>
+                            <Text style={styles.dateGroupLabel}>{date}</Text>
+                            {pinsForDate.map((pin) => (
+                                <SwipeablePinCard
+                                    key={pin.id}
+                                    pin={pin}
+                                    onPress={() =>
+                                        router.push({
+                                            pathname: '/pindraw/detail',
+                                            params: { id: pin.contentId, from: 'records' },
+                                        })
+                                    }
+                                    onDelete={() => handleDeletePin(pin.id)}
+                                />
+                            ))}
+                        </View>
+                    ))}
+                </ScrollView>
+            </SafeAreaView>
+        </GestureHandlerRootView>
     );
 }
 
 const styles = StyleSheet.create({
+    gestureRoot: {
+        flex: 1,
+        backgroundColor: ScreenTheme.background,
+    },
     safe: {
         flex: 1,
         backgroundColor: ScreenTheme.background,
@@ -391,11 +453,11 @@ const styles = StyleSheet.create({
         color: ScreenTheme.muted,
     },
     pinCard: {
-        minHeight: 74,
+        height: 74,
         paddingHorizontal: 12,
         paddingVertical: 12,
         marginBottom: 10,
-        borderRadius: 16,
+        borderRadius: 18,
         backgroundColor: '#ffffff',
         flexDirection: 'row',
         alignItems: 'center',
@@ -404,6 +466,31 @@ const styles = StyleSheet.create({
         shadowRadius: 8,
         shadowOffset: { width: 0, height: 4 },
         elevation: 1,
+    },
+    deleteAction: {
+        width: 74,
+        height: 74,
+        borderRadius: 18,
+        backgroundColor: '#d94b4b',
+        marginLeft: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+        overflow: 'hidden',
+    },
+    deleteActionButton: {
+        width: 74,
+        height: 74,
+        borderRadius: 18,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#d94b4b',
+    },
+    deleteActionIconWrap: {
+        width: 22,
+        height: 22,
+        justifyContent: 'center',
+        alignItems: 'center',
+        color: '#ffffff',
     },
     pinIconBox: {
         width: 38,
