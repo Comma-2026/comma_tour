@@ -36,6 +36,8 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         {/* 홈 "최근 핀 기록 · 전체 보기" */}
         <Stack.Screen name="pin-records" options={{ headerShown: false }} />
+        {/* 홈 "장소 검색" */}
+        <Stack.Screen name="search" options={{ headerShown: false }} />
         {/* 다이어리 일기 상세(읽기) */}
         <Stack.Screen name="diary-detail" options={{ headerShown: false }} />
         {/* 다이어리 일기 작성/수정 */}
