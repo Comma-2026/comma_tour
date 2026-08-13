@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -41,13 +42,15 @@ export default function DiaryWriteScreen() {
     contentId?: string;
     placeName: string;
     region?: string;
-    visitedAt?: string;
   }>();
 
-  const { pinId, contentId, placeName, region, visitedAt } = params;
+  const { pinId, contentId, placeName, region } = params;
 
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  // 방문일 — 자동으로 채우지 않고 사용자가 달력에서 직접 고른다(선택 입력, YYYY-MM-DD).
+  const [visitedDate, setVisitedDate] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -71,6 +74,7 @@ export default function DiaryWriteScreen() {
       if (existing) {
         setTitle(existing.title);
         setContent(existing.content);
+        setVisitedDate(existing.visited_at ?? '');
         setHasSavedPhoto(existing.has_photo);
       }
       setLoading(false);
@@ -105,6 +109,12 @@ export default function DiaryWriteScreen() {
     setNewPhotoMime(null);
   };
 
+  /** Date → "YYYY-MM-DD" (기기 로컬 기준). */
+  const formatDate = (d: Date) => {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  };
+
   const handleSave = async () => {
     if (saving) return;
     if (!content.trim()) {
@@ -120,7 +130,7 @@ export default function DiaryWriteScreen() {
       region: region ?? '',
       title: title.trim(),
       content: content.trim(),
-      visited_at: visitedAt ?? null,
+      visited_at: visitedDate || null,
       // 새로 고른 사진이 있을 때만 전송(없으면 백엔드가 기존 사진 유지).
       photo_base64: newPhotoBase64,
       photo_mime: newPhotoMime,
@@ -172,10 +182,43 @@ export default function DiaryWriteScreen() {
               <Text style={styles.placeLabel}>📍 이 핀에 남기는 일기</Text>
               <Text style={styles.placeName}>{placeName}</Text>
               {!!region && <Text style={styles.placeRegion}>{region}</Text>}
-              {!!visitedAt && (
-                <Text style={styles.placeDate}>방문일 · {visitedAt}</Text>
+            </View>
+
+            <Text style={styles.fieldLabel}>방문일</Text>
+            <View style={styles.dateRow}>
+              <TouchableOpacity
+                style={styles.dateField}
+                activeOpacity={0.7}
+                onPress={() => setShowDatePicker(true)}
+              >
+                <Text style={visitedDate ? styles.dateText : styles.datePlaceholder}>
+                  {visitedDate || '날짜 선택 (선택)'}
+                </Text>
+              </TouchableOpacity>
+              {!!visitedDate && (
+                <TouchableOpacity
+                  style={styles.dateClearButton}
+                  hitSlop={8}
+                  onPress={() => setVisitedDate('')}
+                >
+                  <Text style={styles.dateClearText}>✕</Text>
+                </TouchableOpacity>
               )}
             </View>
+            {showDatePicker && (
+              <DateTimePicker
+                value={visitedDate ? new Date(visitedDate) : new Date()}
+                mode="date"
+                // Android는 달력 다이얼로그, iOS는 작은 인라인 달력.
+                display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
+                onChange={(event, date) => {
+                  setShowDatePicker(false);
+                  if (event.type === 'set' && date) {
+                    setVisitedDate(formatDate(date));
+                  }
+                }}
+              />
+            )}
 
             <Text style={styles.fieldLabel}>사진</Text>
             {previewSource ? (
@@ -320,12 +363,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: ScreenTheme.muted,
   },
-  placeDate: {
-    marginTop: 6,
-    fontSize: 11,
-    fontWeight: '600',
-    color: ScreenTheme.muted,
-  },
   fieldLabel: {
     marginBottom: 8,
     fontSize: 13,
@@ -392,6 +429,37 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: ScreenTheme.text,
     marginBottom: 20,
+  },
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 20,
+  },
+  dateField: {
+    flex: 1,
+    borderRadius: 12,
+    backgroundColor: ScreenTheme.card,
+    borderWidth: 1,
+    borderColor: Brand.border,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+  },
+  dateText: {
+    fontSize: 14,
+    color: ScreenTheme.text,
+  },
+  datePlaceholder: {
+    fontSize: 14,
+    color: Brand.placeholder,
+  },
+  dateClearButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+  },
+  dateClearText: {
+    fontSize: 14,
+    color: ScreenTheme.muted,
   },
   contentInput: {
     minHeight: 220,

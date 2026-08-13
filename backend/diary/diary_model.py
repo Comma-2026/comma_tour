@@ -119,6 +119,7 @@ def _json_update(user_email: str, pin_id: str, fields: dict) -> dict | None:
         return None
     entry["title"] = fields.get("title", entry.get("title"))
     entry["content"] = fields.get("content", entry.get("content"))
+    entry["visited_at"] = fields.get("visited_at", entry.get("visited_at"))
     entry["updated_at"] = fields.get("updated_at", entry.get("updated_at"))
     # 사진은 새로 올라온 경우에만 교체한다(없으면 기존 사진 유지).
     if "photo_bytes" in fields:
@@ -305,8 +306,13 @@ def _mysql_create(diary: dict) -> dict:
 
 def _mysql_update(user_email: str, pin_id: str, fields: dict) -> dict | None:
     _mysql_ensure_schema()
-    set_cols = ["title = %s", "content = %s", "updated_at = %s"]
-    values: list = [fields.get("title"), fields.get("content"), fields.get("updated_at")]
+    set_cols = ["title = %s", "content = %s", "visited_at = %s", "updated_at = %s"]
+    values: list = [
+        fields.get("title"),
+        fields.get("content"),
+        fields.get("visited_at"),
+        fields.get("updated_at"),
+    ]
     if "photo_bytes" in fields:
         set_cols += ["photo = %s", "photo_mime = %s"]
         values += [fields["photo_bytes"], fields.get("photo_mime")]

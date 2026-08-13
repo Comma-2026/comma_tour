@@ -150,6 +150,7 @@ def update_diary(user_email: str, pin_id: str, payload: dict) -> dict:
     fields = {
         "title": _clean(payload.get("title")),
         "content": content,
+        "visited_at": _clean(payload.get("visited_at")) or None,
         "updated_at": _now_iso(),
     }
     # 새 사진이 올라온 경우에만 사진 필드를 넘긴다(없으면 기존 사진 유지).
