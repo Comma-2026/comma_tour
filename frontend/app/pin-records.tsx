@@ -285,7 +285,7 @@ export default function PinRecordsScreen() {
                                     pin={pin}
                                     onPress={() =>
                                         router.push({
-                                            pathname: '/pindraw/detail',
+                                            pathname: '/spot-detail',
                                             params: { id: pin.contentId, from: 'records' },
                                         })
                                     }

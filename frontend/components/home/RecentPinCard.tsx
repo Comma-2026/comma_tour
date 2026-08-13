@@ -25,7 +25,7 @@ export function RecentPinCard({ pin }: RecentPinCardProps) {
             onPress={() =>
                 // 핀 기록 화면의 카드와 동일한 읽기 전용 상세(길찾기만)로 연다.
                 router.push({
-                    pathname: '/pindraw/detail',
+                    pathname: '/spot-detail',
                     params: { id: pin.contentId, from: 'records' },
                 })
             }

@@ -193,7 +193,7 @@ export default function PinDrawScreen() {
 
   const handleOpenDetail = () => {
     if (!current) return;
-    router.push({ pathname: '/pindraw/detail', params: { id: current.id } });
+    router.push({ pathname: '/spot-detail', params: { id: current.id } });
   };
 
   if (!surveyDone) {
