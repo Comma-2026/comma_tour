@@ -39,9 +39,11 @@ export function RecentPinCard({ pin }: RecentPinCardProps) {
                     {pin.place_name}
                 </Text>
                 <Text style={styles.region}>{pin.region}</Text>
-                <Text style={styles.memo} numberOfLines={1}>
-                    {pin.phrase ?? pin.memo ?? `${pin.visited_at} 방문`}
-                </Text>
+                {(pin.phrase || pin.memo) && (
+                    <Text style={styles.memo} numberOfLines={1}>
+                        {pin.phrase ?? pin.memo}
+                    </Text>
+                )}
             </View>
 
             <Text style={styles.arrow}>›</Text>

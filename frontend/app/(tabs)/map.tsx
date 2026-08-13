@@ -56,7 +56,7 @@ function toSpotMarker(pin: Pin): SpotMarker {
         category: toSpotCategory(pin.category),
         latitude: pin.latitude,
         longitude: pin.longitude,
-        description: pin.phrase ?? pin.memo ?? `${pin.visited_at}에 방문`,
+        description: pin.phrase ?? pin.memo ?? '',
     };
 }
 
@@ -293,9 +293,11 @@ function SpotCard({
                         </View>
                     </View>
                     <Text style={styles.cardRegion}>📍 {spot.region}</Text>
-                    <Text style={styles.cardDesc} numberOfLines={2}>
-                        {spot.description}
-                    </Text>
+                    {!!spot.description && (
+                        <Text style={styles.cardDesc} numberOfLines={2}>
+                            {spot.description}
+                        </Text>
+                    )}
                 </View>
             </TouchableOpacity>
             <TouchableOpacity
