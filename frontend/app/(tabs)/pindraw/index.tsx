@@ -17,6 +17,7 @@ import {
   DEBUG_SOURCE_TYPES,
   FEEDBACK_TAGS,
   PREFERENCE_TAG_GROUPS,
+  THEME_CATEGORIES,
   fetchAvailableRegions,
   fetchRecommendedSpots,
   type SpotCard,
@@ -42,7 +43,10 @@ export default function PinDrawScreen() {
   const [surveyDone, setSurveyDone] = useState(false);
   const [preference, setPreference] = useState<Set<string>>(new Set());
   const [regions, setRegions] = useState<string[]>([]);
-  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
+  // 지역 다중 선택(중복 선택 가능). 비어있으면 전체.
+  const [selectedRegions, setSelectedRegions] = useState<Set<string>>(new Set());
+  // "테마별" 다중 선택(THEME_CATEGORIES, 중복 선택 가능). 비어있으면 전체.
+  const [selectedThemes, setSelectedThemes] = useState<Set<string>>(new Set());
   // 디버그용 — 12/14/28/38 각 출처가 실제로 잘 불러와졌는지 확인할 때만 쓴다.
   const [debugSourceType, setDebugSourceType] = useState<number | null>(null);
 
@@ -64,8 +68,9 @@ export default function PinDrawScreen() {
       const spots = await fetchRecommendedSpots(
         excludeIds,
         tags,
-        selectedRegion,
+        Array.from(selectedRegions),
         debugSourceType,
+        Array.from(selectedThemes),
       );
       if (spots.length === 0) {
         setError(true);
@@ -76,7 +81,7 @@ export default function PinDrawScreen() {
       }
       setLoading(false);
     },
-    [preference, selectedRegion, debugSourceType],
+    [preference, selectedRegions, debugSourceType, selectedThemes],
   );
 
   // 설문을 마치면 그 선호를 반영해 첫 3장을 뽑는다.
@@ -93,7 +98,8 @@ export default function PinDrawScreen() {
   const resetToSurvey = useCallback(() => {
     setSurveyDone(false);
     setPreference(new Set());
-    setSelectedRegion(null);
+    setSelectedRegions(new Set());
+    setSelectedThemes(new Set());
     setDebugSourceType(null);
     setCards([]);
     setIndex(0);
@@ -133,6 +139,30 @@ export default function PinDrawScreen() {
         next.delete(tagId);
       } else {
         next.add(tagId);
+      }
+      return next;
+    });
+  };
+
+  const toggleTheme = (themeId: string) => {
+    setSelectedThemes((prev) => {
+      const next = new Set(prev);
+      if (next.has(themeId)) {
+        next.delete(themeId);
+      } else {
+        next.add(themeId);
+      }
+      return next;
+    });
+  };
+
+  const toggleRegion = (region: string) => {
+    setSelectedRegions((prev) => {
+      const next = new Set(prev);
+      if (next.has(region)) {
+        next.delete(region);
+      } else {
+        next.add(region);
       }
       return next;
     });
@@ -208,52 +238,100 @@ export default function PinDrawScreen() {
                   </View>
                 </View>
 
-                {group.title === '테마별' && (
-                  <View style={styles.surveyGroup}>
-                    <Text style={styles.surveyGroupTitle}>지역</Text>
-                    <View style={styles.chipRow}>
-                      <TouchableOpacity
-                        style={[
-                          styles.chip,
-                          selectedRegion === null && styles.chipSelected,
-                        ]}
-                        activeOpacity={0.8}
-                        onPress={() => setSelectedRegion(null)}
-                      >
-                        <Text
+                {group.title === '기본' && (
+                  <>
+                    <View style={styles.surveyGroup}>
+                      <Text style={styles.surveyGroupTitle}>테마별</Text>
+                      <View style={styles.chipRow}>
+                        <TouchableOpacity
                           style={[
-                            styles.chipText,
-                            selectedRegion === null && styles.chipTextSelected,
+                            styles.chip,
+                            selectedThemes.size === 0 && styles.chipSelected,
                           ]}
+                          activeOpacity={0.8}
+                          onPress={() => setSelectedThemes(new Set())}
                         >
-                          전체
-                        </Text>
-                      </TouchableOpacity>
-                      {regions.map((region) => {
-                        const selected = selectedRegion === region;
-                        return (
-                          <TouchableOpacity
-                            key={region}
+                          <Text
                             style={[
-                              styles.chip,
-                              selected && styles.chipSelected,
+                              styles.chipText,
+                              selectedThemes.size === 0 && styles.chipTextSelected,
                             ]}
-                            activeOpacity={0.8}
-                            onPress={() => setSelectedRegion(region)}
                           >
-                            <Text
+                            전체
+                          </Text>
+                        </TouchableOpacity>
+                        {THEME_CATEGORIES.map((theme) => {
+                          const selected = selectedThemes.has(theme.id);
+                          return (
+                            <TouchableOpacity
+                              key={theme.id}
                               style={[
-                                styles.chipText,
-                                selected && styles.chipTextSelected,
+                                styles.chip,
+                                selected && styles.chipSelected,
                               ]}
+                              activeOpacity={0.8}
+                              onPress={() => toggleTheme(theme.id)}
                             >
-                              {region}
-                            </Text>
-                          </TouchableOpacity>
-                        );
-                      })}
+                              <Text
+                                style={[
+                                  styles.chipText,
+                                  selected && styles.chipTextSelected,
+                                ]}
+                              >
+                                {theme.label}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
                     </View>
-                  </View>
+
+                    <View style={styles.surveyGroup}>
+                      <Text style={styles.surveyGroupTitle}>지역</Text>
+                      <View style={styles.chipRow}>
+                        <TouchableOpacity
+                          style={[
+                            styles.chip,
+                            selectedRegions.size === 0 && styles.chipSelected,
+                          ]}
+                          activeOpacity={0.8}
+                          onPress={() => setSelectedRegions(new Set())}
+                        >
+                          <Text
+                            style={[
+                              styles.chipText,
+                              selectedRegions.size === 0 && styles.chipTextSelected,
+                            ]}
+                          >
+                            전체
+                          </Text>
+                        </TouchableOpacity>
+                        {regions.map((region) => {
+                          const selected = selectedRegions.has(region);
+                          return (
+                            <TouchableOpacity
+                              key={region}
+                              style={[
+                                styles.chip,
+                                selected && styles.chipSelected,
+                              ]}
+                              activeOpacity={0.8}
+                              onPress={() => toggleRegion(region)}
+                            >
+                              <Text
+                                style={[
+                                  styles.chipText,
+                                  selected && styles.chipTextSelected,
+                                ]}
+                              >
+                                {region}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  </>
                 )}
               </View>
             ))}

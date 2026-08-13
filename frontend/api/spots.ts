@@ -47,7 +47,7 @@ export const FEEDBACK_TAGS: { id: string; label: string }[] = [
 ];
 
 /**
- * 첫 진입 선호 설문 칩. id는 백엔드 필터 키와 1:1로 맞춘다.
+ * 첫 진입 선호 설문 칩(체크박스, 다중 선택). id는 백엔드 필터 키와 1:1로 맞춘다.
  * 그룹 구분은 UI/UX 가독성용일 뿐, 알고리즘(필터 적용)에는 영향을 주지 않는다 — 선택된 id들은 그대로 합쳐져 전달된다.
  */
 export const PREFERENCE_TAG_GROUPS: { title: string; tags: { id: string; label: string }[] }[] = [
@@ -62,22 +62,28 @@ export const PREFERENCE_TAG_GROUPS: { title: string; tags: { id: string; label: 
     ],
   },
   {
-    title: '테마별',
-    tags: [
-      { id: 'nature_healing', label: '자연 속에서 힐링하고 싶어요' },
-      { id: 'history_culture', label: '역사·문화 탐방이 좋아요' },
-      { id: 'activity_experience', label: '체험 위주가 좋아요' },
-      { id: 'leisure_sports', label: '레저스포츠 위주가 좋아요' },
-    ],
-  },
-  {
     title: '기타',
     tags: [
       { id: 'free_only', label: '무료로 즐기고 싶어요' },
       { id: 'parking_required', label: '주차가 꼭 가능해야 해요' },
       { id: 'pet_friendly', label: '반려동물과 함께해요' },
+      { id: 'leisure_sports', label: '레저스포츠를 즐기고 싶어요' },
     ],
   },
+];
+
+/**
+ * 설문 "테마별" 단일 선택(라디오 형태, 지역 선택과 동일한 방식). id는 백엔드 _THEME_FILTERS 키와 1:1.
+ * 체험/자연/역사관광은 12(관광지)에서, 문화관광도 12에서(14/28과 안 겹치게 서버에서 출처로 구분),
+ * 문화시설은 14, 시장은 38(쇼핑 중 시장)에서 온다.
+ */
+export const THEME_CATEGORIES: { id: string; label: string }[] = [
+  { id: 'exp_tourism', label: '체험관광' },
+  { id: 'culture_tourism', label: '문화관광' },
+  { id: 'nature_tourism', label: '자연관광' },
+  { id: 'history_tourism', label: '역사관광' },
+  { id: 'culture_facility', label: '문화시설' },
+  { id: 'market', label: '시장' },
 ];
 
 /** 요청이 응답 없이 멈추는 것을 막기 위한 타임아웃(ms) */
@@ -109,19 +115,22 @@ export const DEBUG_SOURCE_TYPES: { id: number; label: string }[] = [
  * 랜덤 관광지 5곳 추천.
  * - excludeIds: 이미 보여준 카드(재추첨 시 후보에서 제외)
  * - feedbackTags: 카드에서 선택한 "아쉬운 점" 태그(다음 추천 후보를 좁히는 데 사용)
- * - region: 지역(시군구) 선택 시 그 안에서만 추천. null/미지정이면 전체.
+ * - regions: 지역(시군구) 다중 선택(중복 선택 가능). 비어있으면 전체.
+ * - themes: "테마별" 다중 선택(THEME_CATEGORIES, 중복 선택 가능). 비어있으면 전체.
  * - sourceContentType: 디버그용. 특정 contentTypeId 출처만 보고 싶을 때(DEBUG_SOURCE_TYPES).
  */
 export async function fetchRecommendedSpots(
   excludeIds: string[] = [],
   feedbackTags: string[] = [],
-  region?: string | null,
+  regions: string[] = [],
   sourceContentType?: number | null,
+  themes: string[] = [],
 ): Promise<SpotCard[]> {
   const params = new URLSearchParams();
   if (excludeIds.length > 0) params.set('exclude', excludeIds.join(','));
   if (feedbackTags.length > 0) params.set('feedback', feedbackTags.join(','));
-  if (region) params.set('region', region);
+  if (regions.length > 0) params.set('region', regions.join(','));
+  if (themes.length > 0) params.set('theme', themes.join(','));
   if (sourceContentType) params.set('sourceType', String(sourceContentType));
   const query = params.toString() ? `?${params.toString()}` : '';
 
