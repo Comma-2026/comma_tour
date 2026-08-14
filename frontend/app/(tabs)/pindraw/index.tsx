@@ -3,12 +3,14 @@ import {
   ActivityIndicator,
   Alert,
   BackHandler,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
@@ -19,6 +21,7 @@ import {
   FEEDBACK_TAGS,
   PREFERENCE_TAG_GROUPS,
   THEME_CATEGORIES,
+  THEME_HELP_NOTICE,
   fetchAvailableRegions,
   fetchRecommendedSpots,
   type SpotCard,
@@ -50,6 +53,8 @@ export default function PinDrawScreen() {
   const [selectedThemes, setSelectedThemes] = useState<Set<string>>(new Set());
   // 디버그용 — 12/14/28/38 각 출처가 실제로 잘 불러와졌는지 확인할 때만 쓴다.
   const [debugSourceType, setDebugSourceType] = useState<number | null>(null);
+  // "테마별" ? 아이콘을 누르면 뜨는 테마 안내 모달.
+  const [themeHelpVisible, setThemeHelpVisible] = useState(false);
 
   useEffect(() => {
     fetchAvailableRegions().then(setRegions);
@@ -279,7 +284,23 @@ export default function PinDrawScreen() {
                 {group.title === '기본' && (
                   <>
                     <View style={styles.surveyGroup}>
-                      <Text style={styles.surveyGroupTitle}>테마별</Text>
+                      <View style={styles.surveyGroupTitleRow}>
+                        <Text style={[styles.surveyGroupTitle, styles.surveyGroupTitleInRow]}>
+                          테마별
+                        </Text>
+                        <TouchableOpacity
+                          hitSlop={8}
+                          onPress={() => setThemeHelpVisible(true)}
+                          accessibilityRole="button"
+                          accessibilityLabel="테마 분류 도움말"
+                        >
+                          <Ionicons
+                            name="help-circle-outline"
+                            size={18}
+                            color={ScreenTheme.muted}
+                          />
+                        </TouchableOpacity>
+                      </View>
                       <View style={styles.chipRow}>
                         <TouchableOpacity
                           style={[
@@ -428,6 +449,47 @@ export default function PinDrawScreen() {
             <Text style={styles.surveyStartButtonText}>쉼표 뽑으러 가기</Text>
           </TouchableOpacity>
         </View>
+
+        {/* 테마별 ? 도움말 — 분류 근거(관광공사 공식 분류)와 테마별 설명/예시 */}
+        <Modal
+          visible={themeHelpVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setThemeHelpVisible(false)}
+        >
+          <View style={styles.helpOverlay}>
+            <View style={styles.helpCard}>
+              <View style={styles.helpHeader}>
+                <Text style={styles.helpTitle}>테마 안내</Text>
+                <TouchableOpacity
+                  hitSlop={8}
+                  onPress={() => setThemeHelpVisible(false)}
+                  accessibilityRole="button"
+                  accessibilityLabel="도움말 닫기"
+                >
+                  <Ionicons name="close" size={20} color={ScreenTheme.text} />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.helpNotice}>{THEME_HELP_NOTICE}</Text>
+
+              <ScrollView
+                style={styles.helpScroll}
+                showsVerticalScrollIndicator={false}
+              >
+                {THEME_CATEGORIES.map((theme) => (
+                  <View key={theme.id} style={styles.helpItem}>
+                    <Text style={styles.helpItemLabel}>{theme.label}</Text>
+                    <Text style={styles.helpItemDesc}>{theme.description}</Text>
+                    <Text style={styles.helpItemExamples}>
+                      예: {theme.examples}
+                    </Text>
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     );
   }
@@ -590,6 +652,78 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     fontSize: 12,
     fontWeight: '800',
+    color: ScreenTheme.muted,
+  },
+  surveyGroupTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginBottom: 8,
+  },
+  surveyGroupTitleInRow: {
+    // 행(Row)이 아래 여백을 담당하므로 제목 자체 여백은 끈다(이중 여백 방지).
+    marginBottom: 0,
+  },
+  helpOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    paddingHorizontal: 26,
+  },
+  helpCard: {
+    maxHeight: '78%',
+    borderRadius: 20,
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 12,
+  },
+  helpHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  helpTitle: {
+    fontFamily: Fonts.serif,
+    fontSize: 17,
+    fontWeight: '800',
+    color: ScreenTheme.text,
+  },
+  helpNotice: {
+    marginBottom: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: '#eef5ee',
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '700',
+    color: ScreenTheme.greenDeep,
+  },
+  helpScroll: {
+    flexGrow: 0,
+  },
+  helpItem: {
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0ede4',
+  },
+  helpItemLabel: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: ScreenTheme.text,
+  },
+  helpItemDesc: {
+    marginTop: 4,
+    fontSize: 13,
+    lineHeight: 20,
+    color: '#4a4a45',
+  },
+  helpItemExamples: {
+    marginTop: 3,
+    fontSize: 12,
+    lineHeight: 18,
     color: ScreenTheme.muted,
   },
   surveyStartButton: {

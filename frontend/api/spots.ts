@@ -72,18 +72,59 @@ export const PREFERENCE_TAG_GROUPS: { title: string; tags: { id: string; label: 
   },
 ];
 
+/** 테마 도움말 상단 안내 문구 — 분류 근거(한국관광공사 공식 분류 체계)를 밝혀 신뢰를 준다. */
+export const THEME_HELP_NOTICE =
+  '한국관광공사가 정한 공식 관광 분류 기준으로 나눈 테마예요.';
+
 /**
  * 설문 "테마별" 단일 선택(라디오 형태, 지역 선택과 동일한 방식). id는 백엔드 _THEME_FILTERS 키와 1:1.
  * 체험/자연/역사관광은 12(관광지)에서, 문화관광도 12에서(14/28과 안 겹치게 서버에서 출처로 구분),
  * 문화시설은 14, 시장은 38(쇼핑 중 시장)에서 온다.
+ * description/examples: 설문의 ? 도움말에 노출 — 신분류체계정보 관광타입정보 연계 정의서의
+ * 대분류(EX/NA/HS/VE)·소분류 용어를 기반으로 작성.
  */
-export const THEME_CATEGORIES: { id: string; label: string }[] = [
-  { id: 'exp_tourism', label: '체험관광' },
-  { id: 'culture_tourism', label: '문화관광' },
-  { id: 'nature_tourism', label: '자연관광' },
-  { id: 'history_tourism', label: '역사관광' },
-  { id: 'culture_facility', label: '문화시설' },
-  { id: 'market', label: '시장' },
+export const THEME_CATEGORIES: {
+  id: string;
+  label: string;
+  description: string;
+  examples: string;
+}[] = [
+  {
+    id: 'exp_tourism',
+    label: '체험관광',
+    description: '전통·공예 체험, 온천·힐링 프로그램처럼 직접 참여하는 여행지예요.',
+    examples: '템플스테이, 공예체험, 온천·찜질방, 체험마을',
+  },
+  {
+    id: 'culture_tourism',
+    label: '문화관광',
+    description: '전망대, 공원, 골목길처럼 도심 속에서 즐기는 랜드마크·야외 문화 공간이에요.',
+    examples: '전망대·다리, 테마파크·동물원, 문화거리·둘레길',
+  },
+  {
+    id: 'nature_tourism',
+    label: '자연관광',
+    description: '산, 계곡, 해안, 공원 등 자연 경관을 즐기는 여행지예요.',
+    examples: '산·폭포, 국립·도립공원, 자연휴양림, 수목원',
+  },
+  {
+    id: 'history_tourism',
+    label: '역사관광',
+    description: '고궁, 유적지, 사찰 등 역사와 전통이 담긴 장소예요.',
+    examples: '고택·민속마을, 사적지·고분, 사찰·종교성지',
+  },
+  {
+    id: 'culture_facility',
+    label: '문화시설',
+    description: '박물관, 미술관, 공연장 등 실내에서 관람·감상하는 시설이에요.',
+    examples: '박물관·미술관, 과학관, 공연장',
+  },
+  {
+    id: 'market',
+    label: '시장',
+    description: '지역 특산물과 먹거리를 만날 수 있는 전통시장이에요.',
+    examples: '상설시장, 5일장 등 비상설시장',
+  },
 ];
 
 /** 요청이 응답 없이 멈추는 것을 막기 위한 타임아웃(ms) */
