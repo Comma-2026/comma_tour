@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   BackHandler,
   ScrollView,
   StyleSheet,
@@ -59,6 +60,9 @@ export default function PinDrawScreen() {
   const [feedback, setFeedback] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  // 5개 한 묶음을 다 패스하면 1번만 추가로 5개를 더 준다(총 10번의 패스 기회).
+  // 그 추가 기회까지 다 쓰면 확인 없이 바로 초기화한다.
+  const [extraRoundUsed, setExtraRoundUsed] = useState(false);
 
   const draw = useCallback(
     async (excludeIds: string[] = [], roundFeedbackTags: string[] = []) => {
@@ -105,6 +109,7 @@ export default function PinDrawScreen() {
     setIndex(0);
     setFeedback(new Set());
     setError(false);
+    setExtraRoundUsed(false);
   }, []);
 
   useEffect(() => {
@@ -180,15 +185,48 @@ export default function PinDrawScreen() {
     });
   };
 
+  // 초기화 확인창 없이 바로 초기화 — "더 뽑을 기회가 없어서" 끝나는 경우라 나갈지 물을 필요는
+  // 없고, 초기화된다는 사실만 알려주면 된다(confirmResetIfNeeded와는 별개의 상황).
+  const resetWithNotice = () => {
+    Alert.alert(
+      '초기화됩니다',
+      '더 뽑을 수 있는 쉼표가 없어서 처음 선택 화면으로 돌아갈게요.',
+      [{ text: '확인', onPress: resetToSurvey }],
+    );
+  };
+
+  // 5개짜리 한 묶음을 다 패스했을 때: 추가 기회가 남아있으면 한 번 더 받을지 물어보고,
+  // 이미 추가 기회를 썼다면(총 10번 다 패스) 바로 초기화 안내로 넘어간다.
+  const handleBatchExhausted = () => {
+    if (extraRoundUsed) {
+      resetWithNotice();
+      return;
+    }
+    Alert.alert(
+      '추가 쉼표 뽑기',
+      '5개의 쉼표 중 선택하지 못해 5회의 추가 쉼표를 받으시겠습니까?',
+      [
+        { text: '취소', style: 'cancel', onPress: resetWithNotice },
+        {
+          text: '추가 뽑기',
+          onPress: () => {
+            setExtraRoundUsed(true);
+            draw(
+              cards.map((card) => card.id),
+              Array.from(feedback),
+            );
+          },
+        },
+      ],
+    );
+  };
+
   const handlePass = () => {
     if (index < cards.length - 1) {
       setIndex(index + 1);
       return;
     }
-    draw(
-      cards.map((card) => card.id),
-      Array.from(feedback),
-    );
+    handleBatchExhausted();
   };
 
   const handleOpenDetail = () => {
