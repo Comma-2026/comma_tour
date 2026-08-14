@@ -227,7 +227,7 @@ export default function SpotDetailScreen() {
                     <ActivityIndicator size="small" color="#ffffff" />
                   ) : (
                     <Text style={styles.primaryButtonText}>
-                      이 여행지로 정하기
+                      📍 이 여행지 핀하기
                     </Text>
                   )}
                 </TouchableOpacity>

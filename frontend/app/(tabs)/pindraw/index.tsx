@@ -49,7 +49,9 @@ export default function PinDrawScreen() {
   const [preference, setPreference] = useState<Set<string>>(new Set());
   const [regions, setRegions] = useState<string[]>([]);
   // 지역 다중 선택(중복 선택 가능). 비어있으면 전체.
-  const [selectedRegions, setSelectedRegions] = useState<Set<string>>(new Set());
+  const [selectedRegions, setSelectedRegions] = useState<Set<string>>(
+    new Set(),
+  );
   // "테마별" 다중 선택(THEME_CATEGORIES, 중복 선택 가능). 비어있으면 전체.
   const [selectedThemes, setSelectedThemes] = useState<Set<string>>(new Set());
   // 디버그용 — 12/14/28/38 각 출처가 실제로 잘 불러와졌는지 확인할 때만 쓴다.
@@ -260,7 +262,12 @@ export default function PinDrawScreen() {
               <View key={group.title}>
                 <View style={styles.surveyGroup}>
                   <View style={styles.surveyGroupTitleRow}>
-                    <Text style={[styles.surveyGroupTitle, styles.surveyGroupTitleInRow]}>
+                    <Text
+                      style={[
+                        styles.surveyGroupTitle,
+                        styles.surveyGroupTitleInRow,
+                      ]}
+                    >
                       {group.title}
                     </Text>
                     {/* "기본" 그룹에 혼잡도 데이터가 일부 관광지에만 있다는 API 한계 안내(? 도움말). */}
@@ -307,7 +314,12 @@ export default function PinDrawScreen() {
                   <>
                     <View style={styles.surveyGroup}>
                       <View style={styles.surveyGroupTitleRow}>
-                        <Text style={[styles.surveyGroupTitle, styles.surveyGroupTitleInRow]}>
+                        <Text
+                          style={[
+                            styles.surveyGroupTitle,
+                            styles.surveyGroupTitleInRow,
+                          ]}
+                        >
                           테마별
                         </Text>
                         <TouchableOpacity
@@ -335,7 +347,8 @@ export default function PinDrawScreen() {
                           <Text
                             style={[
                               styles.chipText,
-                              selectedThemes.size === 0 && styles.chipTextSelected,
+                              selectedThemes.size === 0 &&
+                                styles.chipTextSelected,
                             ]}
                           >
                             전체
@@ -381,7 +394,8 @@ export default function PinDrawScreen() {
                           <Text
                             style={[
                               styles.chipText,
-                              selectedRegions.size === 0 && styles.chipTextSelected,
+                              selectedRegions.size === 0 &&
+                                styles.chipTextSelected,
                             ]}
                           >
                             전체
@@ -662,7 +676,7 @@ export default function PinDrawScreen() {
               activeOpacity={0.85}
               onPress={handleOpenDetail}
             >
-              <Text style={styles.pinButtonText}>📍 핀하기</Text>
+              <Text style={styles.pinButtonText}>상세정보</Text>
             </TouchableOpacity>
           </View>
         </View>
