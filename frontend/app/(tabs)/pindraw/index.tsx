@@ -22,6 +22,7 @@ import {
   PREFERENCE_TAG_GROUPS,
   THEME_CATEGORIES,
   THEME_HELP_NOTICE,
+  WANT_QUIETER_HELP_PARAGRAPHS,
   fetchAvailableRegions,
   fetchRecommendedSpots,
   type SpotCard,
@@ -55,6 +56,8 @@ export default function PinDrawScreen() {
   const [debugSourceType, setDebugSourceType] = useState<number | null>(null);
   // "테마별" ? 아이콘을 누르면 뜨는 테마 안내 모달.
   const [themeHelpVisible, setThemeHelpVisible] = useState(false);
+  // "조용한 곳이 좋아요" 옆 ? 아이콘을 누르면 뜨는 혼잡도 데이터 한계 안내 모달.
+  const [quietHelpVisible, setQuietHelpVisible] = useState(false);
 
   useEffect(() => {
     fetchAvailableRegions().then(setRegions);
@@ -256,7 +259,26 @@ export default function PinDrawScreen() {
             {PREFERENCE_TAG_GROUPS.map((group) => (
               <View key={group.title}>
                 <View style={styles.surveyGroup}>
-                  <Text style={styles.surveyGroupTitle}>{group.title}</Text>
+                  <View style={styles.surveyGroupTitleRow}>
+                    <Text style={[styles.surveyGroupTitle, styles.surveyGroupTitleInRow]}>
+                      {group.title}
+                    </Text>
+                    {/* "기본" 그룹에 혼잡도 데이터가 일부 관광지에만 있다는 API 한계 안내(? 도움말). */}
+                    {group.title === '기본' && (
+                      <TouchableOpacity
+                        hitSlop={8}
+                        onPress={() => setQuietHelpVisible(true)}
+                        accessibilityRole="button"
+                        accessibilityLabel="혼잡도 정보 안내"
+                      >
+                        <Ionicons
+                          name="help-circle-outline"
+                          size={18}
+                          color={ScreenTheme.muted}
+                        />
+                      </TouchableOpacity>
+                    )}
+                  </View>
                   <View style={styles.chipRow}>
                     {group.tags.map((tag) => {
                       const selected = preference.has(tag.id);
@@ -490,6 +512,36 @@ export default function PinDrawScreen() {
             </View>
           </View>
         </Modal>
+
+        {/* "조용한 곳이 좋아요" ? 도움말 — 혼잡도 데이터가 일부 관광지에만 있다는 API 한계 안내 */}
+        <Modal
+          visible={quietHelpVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setQuietHelpVisible(false)}
+        >
+          <View style={styles.helpOverlay}>
+            <View style={styles.helpCard}>
+              <View style={styles.helpHeader}>
+                <Text style={styles.helpTitle}>혼잡도 정보 안내</Text>
+                <TouchableOpacity
+                  hitSlop={8}
+                  onPress={() => setQuietHelpVisible(false)}
+                  accessibilityRole="button"
+                  accessibilityLabel="도움말 닫기"
+                >
+                  <Ionicons name="close" size={20} color={ScreenTheme.text} />
+                </TouchableOpacity>
+              </View>
+
+              {WANT_QUIETER_HELP_PARAGRAPHS.map((paragraph: string) => (
+                <Text key={paragraph} style={styles.helpParagraph}>
+                  {paragraph}
+                </Text>
+              ))}
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     );
   }
@@ -718,6 +770,13 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontSize: 13,
     lineHeight: 20,
+    color: '#4a4a45',
+  },
+  // 혼잡도 안내 모달 본문 — 테마 설명(helpItemDesc)과 같은 톤, 문단 사이 여백만 넉넉히.
+  helpParagraph: {
+    marginBottom: 14,
+    fontSize: 13,
+    lineHeight: 21,
     color: '#4a4a45',
   },
   helpItemExamples: {
