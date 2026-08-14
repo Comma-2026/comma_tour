@@ -2,7 +2,6 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { Brand, Fonts } from '@/constants/theme';
-import { confirmResetIfNeeded } from '@/utils/pindrawSession';
 
 const HomeTheme = {
     greenDeep: '#1a3a2a',
@@ -15,7 +14,7 @@ export function HomeActionCards() {
     const router = useRouter();
 
     const handleRandomPress = () => {
-        confirmResetIfNeeded(() => router.push('/pindraw'));
+        router.push('/pindraw');
     };
 
     const handleSearchPress = () => {

@@ -112,7 +112,7 @@ export const DEBUG_SOURCE_TYPES: { id: number; label: string }[] = [
 ];
 
 /**
- * 랜덤 관광지 5곳 추천.
+ * 랜덤 관광지 추천.
  * - excludeIds: 이미 보여준 카드(재추첨 시 후보에서 제외)
  * - feedbackTags: 카드에서 선택한 "아쉬운 점" 태그(다음 추천 후보를 좁히는 데 사용)
  * - regions: 지역(시군구) 다중 선택(중복 선택 가능). 비어있으면 전체.
@@ -125,6 +125,7 @@ export async function fetchRecommendedSpots(
   regions: string[] = [],
   sourceContentType?: number | null,
   themes: string[] = [],
+  count = 5,
 ): Promise<SpotCard[]> {
   const params = new URLSearchParams();
   if (excludeIds.length > 0) params.set('exclude', excludeIds.join(','));
@@ -132,6 +133,7 @@ export async function fetchRecommendedSpots(
   if (regions.length > 0) params.set('region', regions.join(','));
   if (themes.length > 0) params.set('theme', themes.join(','));
   if (sourceContentType) params.set('sourceType', String(sourceContentType));
+  params.set('count', String(count));
   const query = params.toString() ? `?${params.toString()}` : '';
 
   const data = await getJson<{ spots: SpotCard[] }>(`/api/spots/recommend${query}`);
