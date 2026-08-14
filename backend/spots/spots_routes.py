@@ -25,17 +25,8 @@ def recommend_route():
     # 디버그용 — 12/14/28/38 각 출처가 실제로 잘 불러와졌는지 확인할 때만 쓴다.
     source_type_raw = request.args.get("sourceType")
     source_content_type = int(source_type_raw) if source_type_raw else None
-    try:
-        count = max(1, min(int(request.args.get("count", "5")), 5))
-    except ValueError:
-        count = 5
     spots = recommend_spots(
-        exclude_ids,
-        feedback_tags,
-        regions,
-        count=count,
-        source_content_type=source_content_type,
-        themes=themes,
+        exclude_ids, feedback_tags, regions, source_content_type=source_content_type, themes=themes
     )
     return jsonify({"spots": spots})
 

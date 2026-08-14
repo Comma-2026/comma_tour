@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  BackHandler,
   ScrollView,
   StyleSheet,
   Text,
@@ -9,6 +10,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
@@ -22,7 +24,10 @@ import {
 } from '@/api/spots';
 import { Brand, Fonts } from '@/constants/theme';
 import { useSpotDistance } from '@/hooks/use-spot-distance';
-import { registerPindrawSession } from '@/utils/pindrawSession';
+import {
+  confirmResetIfNeeded,
+  registerPindrawSession,
+} from '@/utils/pindrawSession';
 
 const ScreenTheme = {
   background: '#f9f8f2',
@@ -54,7 +59,6 @@ export default function PinDrawScreen() {
   const [feedback, setFeedback] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [awaitingAdditionalDraw, setAwaitingAdditionalDraw] = useState(false);
 
   const draw = useCallback(
     async (excludeIds: string[] = [], roundFeedbackTags: string[] = []) => {
@@ -67,7 +71,6 @@ export default function PinDrawScreen() {
         Array.from(selectedRegions),
         debugSourceType,
         Array.from(selectedThemes),
-        5,
       );
       if (spots.length === 0) {
         setError(true);
@@ -75,17 +78,16 @@ export default function PinDrawScreen() {
         setCards(spots);
         setIndex(0);
         setFeedback(new Set());
-        setAwaitingAdditionalDraw(false);
       }
       setLoading(false);
     },
     [preference, selectedRegions, debugSourceType, selectedThemes],
   );
 
-  // 설문을 마치면 새로 선택한 선호를 반영해 최초 추천을 뽑는다.
+  // 설문을 마치면 그 선호를 반영해 첫 3장을 뽑는다.
   useEffect(() => {
-    if (surveyDone && cards.length === 0) draw();
-  }, [surveyDone, cards.length, draw]);
+    if (surveyDone) draw();
+  }, [surveyDone, draw]);
 
   // 진행중인 뽑기 존재 확인용 함수
   const surveyDoneRef = useRef(surveyDone);
@@ -103,20 +105,29 @@ export default function PinDrawScreen() {
     setIndex(0);
     setFeedback(new Set());
     setError(false);
-    setAwaitingAdditionalDraw(false);
   }, []);
 
   useEffect(() => {
     registerPindrawSession(() => surveyDoneRef.current, resetToSurvey);
   }, [resetToSurvey]);
 
-  const current = cards[index];
-  // 상단 진행 표시는 현재 추천 묶음(최대 5개)만 노출한다.
-  const visibleProgressStart = Math.floor(index / 5) * 5;
-  const visibleProgressCards = cards.slice(
-    visibleProgressStart,
-    visibleProgressStart + 5,
+  // 안드로이드 하드웨어 뒤로가기도 탭 전환과 똑같이 가로챈다 — 진행 중인 뽑기가 있으면
+  // 초기화 확인창을 띄우고, 없으면(surveyDoneRef.current === false) 원래 뒤로가기 동작 그대로 둔다.
+  useFocusEffect(
+    useCallback(() => {
+      const subscription = BackHandler.addEventListener(
+        'hardwareBackPress',
+        () => {
+          if (!surveyDoneRef.current) return false;
+          confirmResetIfNeeded(() => router.back());
+          return true;
+        },
+      );
+      return () => subscription.remove();
+    }, [router]),
   );
+
+  const current = cards[index];
 
   // 내 위치 기준 거리 라벨(위치 확인 중/권한 없음 상태도 문구로 표시).
   const distanceLabel = useSpotDistance(current);
@@ -174,32 +185,10 @@ export default function PinDrawScreen() {
       setIndex(index + 1);
       return;
     }
-    void handleAdditionalDraw();
-  };
-
-  const handleAdditionalDraw = async () => {
-    setAwaitingAdditionalDraw(true);
-    setLoading(true);
-    setError(false);
-    const spots = await fetchRecommendedSpots(
+    draw(
       cards.map((card) => card.id),
-      [...preference, ...feedback],
-      Array.from(selectedRegions),
-      debugSourceType,
-      Array.from(selectedThemes),
-      5,
+      Array.from(feedback),
     );
-
-    if (spots.length === 0) {
-      setError(true);
-    } else {
-      // 다음 추천 묶음을 한 번에 준비해 묶음 안에서는 추가 로딩 없이 패스한다.
-      setCards(spots);
-      setIndex(0);
-      setFeedback(new Set());
-      setAwaitingAdditionalDraw(false);
-    }
-    setLoading(false);
   };
 
   const handleOpenDetail = () => {
@@ -409,7 +398,7 @@ export default function PinDrawScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={resetToSurvey}
+          onPress={() => confirmResetIfNeeded(() => router.back())}
         >
           <Text style={styles.headerIcon}>‹</Text>
         </TouchableOpacity>
@@ -421,13 +410,10 @@ export default function PinDrawScreen() {
 
       {!loading && !error && cards.length > 0 && (
         <View style={styles.dotsRow}>
-          {visibleProgressCards.map((card, i) => (
+          {cards.map((card, i) => (
             <View
-              key={`${card.id}-${visibleProgressStart + i}`}
-              style={[
-                styles.dot,
-                visibleProgressStart + i === index && styles.dotActive,
-              ]}
+              key={card.id}
+              style={[styles.dot, i === index && styles.dotActive]}
             />
           ))}
         </View>
@@ -444,10 +430,7 @@ export default function PinDrawScreen() {
           <Text style={styles.desc}>
             추천을 불러오지 못했어요. 잠시 후 다시 시도해주세요.
           </Text>
-          <TouchableOpacity
-            style={styles.retryButton}
-            onPress={awaitingAdditionalDraw ? handleAdditionalDraw : () => draw()}
-          >
+          <TouchableOpacity style={styles.retryButton} onPress={() => draw()}>
             <Text style={styles.retryButtonText}>다시 시도</Text>
           </TouchableOpacity>
         </View>
@@ -515,22 +498,20 @@ export default function PinDrawScreen() {
           </View>
 
           <View style={styles.actionRow}>
-            <>
-              <TouchableOpacity
-                style={styles.passButton}
-                activeOpacity={0.85}
-                onPress={handlePass}
-              >
-                <Text style={styles.passButtonText}>✕ 패스</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.pinButton}
-                activeOpacity={0.85}
-                onPress={handleOpenDetail}
-              >
-                <Text style={styles.pinButtonText}>📍 핀하기</Text>
-              </TouchableOpacity>
-            </>
+            <TouchableOpacity
+              style={styles.passButton}
+              activeOpacity={0.85}
+              onPress={handlePass}
+            >
+              <Text style={styles.passButtonText}>✕ 패스</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.pinButton}
+              activeOpacity={0.85}
+              onPress={handleOpenDetail}
+            >
+              <Text style={styles.pinButtonText}>📍 핀하기</Text>
+            </TouchableOpacity>
           </View>
         </View>
       )}
