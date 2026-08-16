@@ -12,6 +12,26 @@ FLASK 서버 사용
 
 Version: 3.1.3
 
+## Docker Desktop 실행
+
+Docker Desktop을 실행한 뒤 프로젝트 루트에서 아래 명령어를 실행합니다.
+
+```bash
+docker compose up --build
+```
+
+실제 기상청 API를 호출하려면 `docker-compose.yml`의 `KMA_SERVICE_KEY`를 발급받은 키로 바꿔주세요.
+
+- Flask 백엔드: http://localhost:5000/api/health
+- Expo 웹 프론트엔드: http://localhost:8081
+- phpLDAPadmin: http://localhost:8080
+
+중지할 때는 `Ctrl+C`를 누른 뒤 아래 명령어를 실행합니다.
+
+```bash
+docker compose down
+```
+
 **참고**
 Flask를 따로 임의로 깔지 마시고 터미널에
 

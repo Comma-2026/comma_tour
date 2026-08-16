@@ -7,6 +7,48 @@
 # 중지:   docker compose down          (데이터 유지)
 # 초기화: docker compose down -v       (볼륨까지 삭제)
 services:
+  backend:
+    build:
+      context: .
+      target: backend
+    container_name: comma_backend
+    environment:
+      FLASK_HOST: "0.0.0.0"
+      FLASK_PORT: "5000"
+      FLASK_DEBUG: "true"
+      SECRET_KEY: "dev-insecure-secret-change-me"
+      LDAP_MODE: "real"
+      LDAP_HOST: "openldap"
+      LDAP_PORT: "389"
+      LDAP_ADMIN_DN: "cn=admin,dc=comma,dc=tour"
+      LDAP_ADMIN_PASSWORD: "admin"
+      LDAP_BASE_DN: "dc=comma,dc=tour"
+      LDAP_USER_OU: "ou=users,dc=comma,dc=tour"
+      SPOT_MODE: "mock"
+      DIARY_MODE: "json"
+      KMA_SERVICE_KEY: "dummy-development-key"
+    ports:
+      - "5000:5000"
+    depends_on:
+      - openldap
+
+  frontend:
+    build:
+      context: .
+      target: frontend
+    container_name: comma_frontend
+    environment:
+      EXPO_PUBLIC_API_BASE_URL: "http://localhost:5000"
+    ports:
+      - "8081:8081"
+      - "19000:19000"
+      - "19001:19001"
+      - "19002:19002"
+    depends_on:
+      - backend
+    stdin_open: true
+    tty: true
+
   openldap:
     image: osixia/openldap:1.5.0
     container_name: comma_openldap
