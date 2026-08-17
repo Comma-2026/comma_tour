@@ -47,7 +47,19 @@ export const FEEDBACK_TAGS: { id: string; label: string }[] = [
 ];
 
 /**
- * 첫 진입 선호 설문 칩. id는 백엔드 필터 키와 1:1로 맞춘다.
+ * "기본" 그룹 옆 ? 도움말 — 혼잡도 데이터가 일부 관광지에만 있다는 API 한계를 안내.
+ * 문단 배열로 두고 화면에서 문단 사이 여백을 줘서 가독성을 높인다.
+ * (백엔드 spots_model.py 기준 실측치: 경북 스팟의 상당수가 혼잡도 "정보 없음". 정확한 비율은
+ * TourAPI 응답 상태에 따라 시점마다 달라질 수 있어 문구에 특정 수치는 넣지 않는다.)
+ */
+export const WANT_QUIETER_HELP_PARAGRAPHS: string[] = [
+  '한국관광공사의 혼잡도 정보는 일부 관광지에만 제공돼요.',
+  '그래서 "조용한 곳이 좋아요"를 선택하면 혼잡도 정보가 있는 관광지 중에서만 "매우 한적한" 곳을 찾아 추천해요.',
+  '정보가 없는 관광지는 한적한지 붐비는지 알 수 없어 자동으로 후보에서 제외돼요. 이 옵션과 다른 조건을 함께 선택하면 추천 범위가 좁아질 수 있어요.',
+];
+
+/**
+ * 첫 진입 선호 설문 칩(체크박스, 다중 선택). id는 백엔드 필터 키와 1:1로 맞춘다.
  * 그룹 구분은 UI/UX 가독성용일 뿐, 알고리즘(필터 적용)에는 영향을 주지 않는다 — 선택된 id들은 그대로 합쳐져 전달된다.
  */
 export const PREFERENCE_TAG_GROUPS: { title: string; tags: { id: string; label: string }[] }[] = [
@@ -62,21 +74,68 @@ export const PREFERENCE_TAG_GROUPS: { title: string; tags: { id: string; label: 
     ],
   },
   {
-    title: '테마별',
-    tags: [
-      { id: 'nature_healing', label: '자연 속에서 힐링하고 싶어요' },
-      { id: 'history_culture', label: '역사·문화 탐방이 좋아요' },
-      { id: 'activity_experience', label: '체험 위주가 좋아요' },
-      { id: 'leisure_sports', label: '레저스포츠 위주가 좋아요' },
-    ],
-  },
-  {
     title: '기타',
     tags: [
       { id: 'free_only', label: '무료로 즐기고 싶어요' },
       { id: 'parking_required', label: '주차가 꼭 가능해야 해요' },
       { id: 'pet_friendly', label: '반려동물과 함께해요' },
+      { id: 'leisure_sports', label: '레저스포츠를 즐기고 싶어요' },
     ],
+  },
+];
+
+/** 테마 도움말 상단 안내 문구 — 분류 근거(한국관광공사 공식 분류 체계)를 밝혀 신뢰를 준다. */
+export const THEME_HELP_NOTICE =
+  '한국관광공사가 정한 공식 관광 분류 기준으로 나눈 테마예요.';
+
+/**
+ * 설문 "테마별" 단일 선택(라디오 형태, 지역 선택과 동일한 방식). id는 백엔드 _THEME_FILTERS 키와 1:1.
+ * 체험/자연/역사관광은 12(관광지)에서, 문화관광도 12에서(14/28과 안 겹치게 서버에서 출처로 구분),
+ * 문화시설은 14, 시장은 38(쇼핑 중 시장)에서 온다.
+ * description/examples: 설문의 ? 도움말에 노출 — 신분류체계정보 관광타입정보 연계 정의서의
+ * 대분류(EX/NA/HS/VE)·소분류 용어를 기반으로 작성.
+ */
+export const THEME_CATEGORIES: {
+  id: string;
+  label: string;
+  description: string;
+  examples: string;
+}[] = [
+  {
+    id: 'exp_tourism',
+    label: '체험관광',
+    description: '전통·공예 체험, 온천·힐링 프로그램처럼 직접 참여하는 여행지예요.',
+    examples: '템플스테이, 공예체험, 온천·찜질방, 체험마을',
+  },
+  {
+    id: 'culture_tourism',
+    label: '문화관광',
+    description: '전망대, 공원, 골목길처럼 도심 속에서 즐기는 랜드마크·야외 문화 공간이에요.',
+    examples: '전망대·다리, 테마파크·동물원, 문화거리·둘레길',
+  },
+  {
+    id: 'nature_tourism',
+    label: '자연관광',
+    description: '산, 계곡, 해안, 공원 등 자연 경관을 즐기는 여행지예요.',
+    examples: '산·폭포, 국립·도립공원, 자연휴양림, 수목원',
+  },
+  {
+    id: 'history_tourism',
+    label: '역사관광',
+    description: '고궁, 유적지, 사찰 등 역사와 전통이 담긴 장소예요.',
+    examples: '고택·민속마을, 사적지·고분, 사찰·종교성지',
+  },
+  {
+    id: 'culture_facility',
+    label: '문화시설',
+    description: '박물관, 미술관, 공연장 등 실내에서 관람·감상하는 시설이에요.',
+    examples: '박물관·미술관, 과학관, 공연장',
+  },
+  {
+    id: 'market',
+    label: '시장',
+    description: '지역 특산물과 먹거리를 만날 수 있는 전통시장이에요.',
+    examples: '상설시장, 5일장 등 비상설시장',
   },
 ];
 
@@ -109,19 +168,22 @@ export const DEBUG_SOURCE_TYPES: { id: number; label: string }[] = [
  * 랜덤 관광지 5곳 추천.
  * - excludeIds: 이미 보여준 카드(재추첨 시 후보에서 제외)
  * - feedbackTags: 카드에서 선택한 "아쉬운 점" 태그(다음 추천 후보를 좁히는 데 사용)
- * - region: 지역(시군구) 선택 시 그 안에서만 추천. null/미지정이면 전체.
+ * - regions: 지역(시군구) 다중 선택(중복 선택 가능). 비어있으면 전체.
+ * - themes: "테마별" 다중 선택(THEME_CATEGORIES, 중복 선택 가능). 비어있으면 전체.
  * - sourceContentType: 디버그용. 특정 contentTypeId 출처만 보고 싶을 때(DEBUG_SOURCE_TYPES).
  */
 export async function fetchRecommendedSpots(
   excludeIds: string[] = [],
   feedbackTags: string[] = [],
-  region?: string | null,
+  regions: string[] = [],
   sourceContentType?: number | null,
+  themes: string[] = [],
 ): Promise<SpotCard[]> {
   const params = new URLSearchParams();
   if (excludeIds.length > 0) params.set('exclude', excludeIds.join(','));
   if (feedbackTags.length > 0) params.set('feedback', feedbackTags.join(','));
-  if (region) params.set('region', region);
+  if (regions.length > 0) params.set('region', regions.join(','));
+  if (themes.length > 0) params.set('theme', themes.join(','));
   if (sourceContentType) params.set('sourceType', String(sourceContentType));
   const query = params.toString() ? `?${params.toString()}` : '';
 

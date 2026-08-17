@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   BackHandler,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
@@ -17,6 +20,9 @@ import {
   DEBUG_SOURCE_TYPES,
   FEEDBACK_TAGS,
   PREFERENCE_TAG_GROUPS,
+  THEME_CATEGORIES,
+  THEME_HELP_NOTICE,
+  WANT_QUIETER_HELP_PARAGRAPHS,
   fetchAvailableRegions,
   fetchRecommendedSpots,
   type SpotCard,
@@ -42,9 +48,18 @@ export default function PinDrawScreen() {
   const [surveyDone, setSurveyDone] = useState(false);
   const [preference, setPreference] = useState<Set<string>>(new Set());
   const [regions, setRegions] = useState<string[]>([]);
-  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
+  // 지역 다중 선택(중복 선택 가능). 비어있으면 전체.
+  const [selectedRegions, setSelectedRegions] = useState<Set<string>>(
+    new Set(),
+  );
+  // "테마별" 다중 선택(THEME_CATEGORIES, 중복 선택 가능). 비어있으면 전체.
+  const [selectedThemes, setSelectedThemes] = useState<Set<string>>(new Set());
   // 디버그용 — 12/14/28/38 각 출처가 실제로 잘 불러와졌는지 확인할 때만 쓴다.
   const [debugSourceType, setDebugSourceType] = useState<number | null>(null);
+  // "테마별" ? 아이콘을 누르면 뜨는 테마 안내 모달.
+  const [themeHelpVisible, setThemeHelpVisible] = useState(false);
+  // "조용한 곳이 좋아요" 옆 ? 아이콘을 누르면 뜨는 혼잡도 데이터 한계 안내 모달.
+  const [quietHelpVisible, setQuietHelpVisible] = useState(false);
 
   useEffect(() => {
     fetchAvailableRegions().then(setRegions);
@@ -55,6 +70,9 @@ export default function PinDrawScreen() {
   const [feedback, setFeedback] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  // 5개 한 묶음을 다 패스하면 1번만 추가로 5개를 더 준다(총 10번의 패스 기회).
+  // 그 추가 기회까지 다 쓰면 확인 없이 바로 초기화한다.
+  const [extraRoundUsed, setExtraRoundUsed] = useState(false);
 
   const draw = useCallback(
     async (excludeIds: string[] = [], roundFeedbackTags: string[] = []) => {
@@ -64,8 +82,9 @@ export default function PinDrawScreen() {
       const spots = await fetchRecommendedSpots(
         excludeIds,
         tags,
-        selectedRegion,
+        Array.from(selectedRegions),
         debugSourceType,
+        Array.from(selectedThemes),
       );
       if (spots.length === 0) {
         setError(true);
@@ -76,7 +95,7 @@ export default function PinDrawScreen() {
       }
       setLoading(false);
     },
-    [preference, selectedRegion, debugSourceType],
+    [preference, selectedRegions, debugSourceType, selectedThemes],
   );
 
   // 설문을 마치면 그 선호를 반영해 첫 3장을 뽑는다.
@@ -93,12 +112,14 @@ export default function PinDrawScreen() {
   const resetToSurvey = useCallback(() => {
     setSurveyDone(false);
     setPreference(new Set());
-    setSelectedRegion(null);
+    setSelectedRegions(new Set());
+    setSelectedThemes(new Set());
     setDebugSourceType(null);
     setCards([]);
     setIndex(0);
     setFeedback(new Set());
     setError(false);
+    setExtraRoundUsed(false);
   }, []);
 
   useEffect(() => {
@@ -138,6 +159,30 @@ export default function PinDrawScreen() {
     });
   };
 
+  const toggleTheme = (themeId: string) => {
+    setSelectedThemes((prev) => {
+      const next = new Set(prev);
+      if (next.has(themeId)) {
+        next.delete(themeId);
+      } else {
+        next.add(themeId);
+      }
+      return next;
+    });
+  };
+
+  const toggleRegion = (region: string) => {
+    setSelectedRegions((prev) => {
+      const next = new Set(prev);
+      if (next.has(region)) {
+        next.delete(region);
+      } else {
+        next.add(region);
+      }
+      return next;
+    });
+  };
+
   const toggleFeedback = (tagId: string) => {
     setFeedback((prev) => {
       const next = new Set(prev);
@@ -150,20 +195,53 @@ export default function PinDrawScreen() {
     });
   };
 
+  // 초기화 확인창 없이 바로 초기화 — "더 뽑을 기회가 없어서" 끝나는 경우라 나갈지 물을 필요는
+  // 없고, 초기화된다는 사실만 알려주면 된다(confirmResetIfNeeded와는 별개의 상황).
+  const resetWithNotice = () => {
+    Alert.alert(
+      '초기화됩니다',
+      '더 뽑을 수 있는 쉼표가 없어서 처음 선택 화면으로 돌아갈게요.',
+      [{ text: '확인', onPress: resetToSurvey }],
+    );
+  };
+
+  // 5개짜리 한 묶음을 다 패스했을 때: 추가 기회가 남아있으면 한 번 더 받을지 물어보고,
+  // 이미 추가 기회를 썼다면(총 10번 다 패스) 바로 초기화 안내로 넘어간다.
+  const handleBatchExhausted = () => {
+    if (extraRoundUsed) {
+      resetWithNotice();
+      return;
+    }
+    Alert.alert(
+      '추가 쉼표 뽑기',
+      '5개의 쉼표 중 선택하지 못해 5회의 추가 쉼표를 받으시겠습니까?',
+      [
+        { text: '취소', style: 'cancel', onPress: resetWithNotice },
+        {
+          text: '추가 뽑기',
+          onPress: () => {
+            setExtraRoundUsed(true);
+            draw(
+              cards.map((card) => card.id),
+              Array.from(feedback),
+            );
+          },
+        },
+      ],
+    );
+  };
+
   const handlePass = () => {
     if (index < cards.length - 1) {
       setIndex(index + 1);
       return;
     }
-    draw(
-      cards.map((card) => card.id),
-      Array.from(feedback),
-    );
+    handleBatchExhausted();
   };
 
   const handleOpenDetail = () => {
     if (!current) return;
-    router.push({ pathname: '/pindraw/detail', params: { id: current.id } });
+    router.push({ pathname: '/spot-detail', params: { id: current.id } });
   };
 
   if (!surveyDone) {
@@ -183,7 +261,31 @@ export default function PinDrawScreen() {
             {PREFERENCE_TAG_GROUPS.map((group) => (
               <View key={group.title}>
                 <View style={styles.surveyGroup}>
-                  <Text style={styles.surveyGroupTitle}>{group.title}</Text>
+                  <View style={styles.surveyGroupTitleRow}>
+                    <Text
+                      style={[
+                        styles.surveyGroupTitle,
+                        styles.surveyGroupTitleInRow,
+                      ]}
+                    >
+                      {group.title}
+                    </Text>
+                    {/* "기본" 그룹에 혼잡도 데이터가 일부 관광지에만 있다는 API 한계 안내(? 도움말). */}
+                    {group.title === '기본' && (
+                      <TouchableOpacity
+                        hitSlop={8}
+                        onPress={() => setQuietHelpVisible(true)}
+                        accessibilityRole="button"
+                        accessibilityLabel="혼잡도 정보 안내"
+                      >
+                        <Ionicons
+                          name="help-circle-outline"
+                          size={18}
+                          color={ScreenTheme.muted}
+                        />
+                      </TouchableOpacity>
+                    )}
+                  </View>
                   <View style={styles.chipRow}>
                     {group.tags.map((tag) => {
                       const selected = preference.has(tag.id);
@@ -208,52 +310,123 @@ export default function PinDrawScreen() {
                   </View>
                 </View>
 
-                {group.title === '테마별' && (
-                  <View style={styles.surveyGroup}>
-                    <Text style={styles.surveyGroupTitle}>지역</Text>
-                    <View style={styles.chipRow}>
-                      <TouchableOpacity
-                        style={[
-                          styles.chip,
-                          selectedRegion === null && styles.chipSelected,
-                        ]}
-                        activeOpacity={0.8}
-                        onPress={() => setSelectedRegion(null)}
-                      >
+                {group.title === '기본' && (
+                  <>
+                    <View style={styles.surveyGroup}>
+                      <View style={styles.surveyGroupTitleRow}>
                         <Text
                           style={[
-                            styles.chipText,
-                            selectedRegion === null && styles.chipTextSelected,
+                            styles.surveyGroupTitle,
+                            styles.surveyGroupTitleInRow,
                           ]}
                         >
-                          전체
+                          테마별
                         </Text>
-                      </TouchableOpacity>
-                      {regions.map((region) => {
-                        const selected = selectedRegion === region;
-                        return (
-                          <TouchableOpacity
-                            key={region}
+                        <TouchableOpacity
+                          hitSlop={8}
+                          onPress={() => setThemeHelpVisible(true)}
+                          accessibilityRole="button"
+                          accessibilityLabel="테마 분류 도움말"
+                        >
+                          <Ionicons
+                            name="help-circle-outline"
+                            size={18}
+                            color={ScreenTheme.muted}
+                          />
+                        </TouchableOpacity>
+                      </View>
+                      <View style={styles.chipRow}>
+                        <TouchableOpacity
+                          style={[
+                            styles.chip,
+                            selectedThemes.size === 0 && styles.chipSelected,
+                          ]}
+                          activeOpacity={0.8}
+                          onPress={() => setSelectedThemes(new Set())}
+                        >
+                          <Text
                             style={[
-                              styles.chip,
-                              selected && styles.chipSelected,
+                              styles.chipText,
+                              selectedThemes.size === 0 &&
+                                styles.chipTextSelected,
                             ]}
-                            activeOpacity={0.8}
-                            onPress={() => setSelectedRegion(region)}
                           >
-                            <Text
+                            전체
+                          </Text>
+                        </TouchableOpacity>
+                        {THEME_CATEGORIES.map((theme) => {
+                          const selected = selectedThemes.has(theme.id);
+                          return (
+                            <TouchableOpacity
+                              key={theme.id}
                               style={[
-                                styles.chipText,
-                                selected && styles.chipTextSelected,
+                                styles.chip,
+                                selected && styles.chipSelected,
                               ]}
+                              activeOpacity={0.8}
+                              onPress={() => toggleTheme(theme.id)}
                             >
-                              {region}
-                            </Text>
-                          </TouchableOpacity>
-                        );
-                      })}
+                              <Text
+                                style={[
+                                  styles.chipText,
+                                  selected && styles.chipTextSelected,
+                                ]}
+                              >
+                                {theme.label}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
                     </View>
-                  </View>
+
+                    <View style={styles.surveyGroup}>
+                      <Text style={styles.surveyGroupTitle}>지역</Text>
+                      <View style={styles.chipRow}>
+                        <TouchableOpacity
+                          style={[
+                            styles.chip,
+                            selectedRegions.size === 0 && styles.chipSelected,
+                          ]}
+                          activeOpacity={0.8}
+                          onPress={() => setSelectedRegions(new Set())}
+                        >
+                          <Text
+                            style={[
+                              styles.chipText,
+                              selectedRegions.size === 0 &&
+                                styles.chipTextSelected,
+                            ]}
+                          >
+                            전체
+                          </Text>
+                        </TouchableOpacity>
+                        {regions.map((region) => {
+                          const selected = selectedRegions.has(region);
+                          return (
+                            <TouchableOpacity
+                              key={region}
+                              style={[
+                                styles.chip,
+                                selected && styles.chipSelected,
+                              ]}
+                              activeOpacity={0.8}
+                              onPress={() => toggleRegion(region)}
+                            >
+                              <Text
+                                style={[
+                                  styles.chipText,
+                                  selected && styles.chipTextSelected,
+                                ]}
+                              >
+                                {region}
+                              </Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  </>
                 )}
               </View>
             ))}
@@ -312,6 +485,77 @@ export default function PinDrawScreen() {
             <Text style={styles.surveyStartButtonText}>쉼표 뽑으러 가기</Text>
           </TouchableOpacity>
         </View>
+
+        {/* 테마별 ? 도움말 — 분류 근거(관광공사 공식 분류)와 테마별 설명/예시 */}
+        <Modal
+          visible={themeHelpVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setThemeHelpVisible(false)}
+        >
+          <View style={styles.helpOverlay}>
+            <View style={styles.helpCard}>
+              <View style={styles.helpHeader}>
+                <Text style={styles.helpTitle}>테마 안내</Text>
+                <TouchableOpacity
+                  hitSlop={8}
+                  onPress={() => setThemeHelpVisible(false)}
+                  accessibilityRole="button"
+                  accessibilityLabel="도움말 닫기"
+                >
+                  <Ionicons name="close" size={20} color={ScreenTheme.text} />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.helpNotice}>{THEME_HELP_NOTICE}</Text>
+
+              <ScrollView
+                style={styles.helpScroll}
+                showsVerticalScrollIndicator={false}
+              >
+                {THEME_CATEGORIES.map((theme) => (
+                  <View key={theme.id} style={styles.helpItem}>
+                    <Text style={styles.helpItemLabel}>{theme.label}</Text>
+                    <Text style={styles.helpItemDesc}>{theme.description}</Text>
+                    <Text style={styles.helpItemExamples}>
+                      예: {theme.examples}
+                    </Text>
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+
+        {/* "조용한 곳이 좋아요" ? 도움말 — 혼잡도 데이터가 일부 관광지에만 있다는 API 한계 안내 */}
+        <Modal
+          visible={quietHelpVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setQuietHelpVisible(false)}
+        >
+          <View style={styles.helpOverlay}>
+            <View style={styles.helpCard}>
+              <View style={styles.helpHeader}>
+                <Text style={styles.helpTitle}>혼잡도 정보 안내</Text>
+                <TouchableOpacity
+                  hitSlop={8}
+                  onPress={() => setQuietHelpVisible(false)}
+                  accessibilityRole="button"
+                  accessibilityLabel="도움말 닫기"
+                >
+                  <Ionicons name="close" size={20} color={ScreenTheme.text} />
+                </TouchableOpacity>
+              </View>
+
+              {WANT_QUIETER_HELP_PARAGRAPHS.map((paragraph: string) => (
+                <Text key={paragraph} style={styles.helpParagraph}>
+                  {paragraph}
+                </Text>
+              ))}
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     );
   }
@@ -432,7 +676,7 @@ export default function PinDrawScreen() {
               activeOpacity={0.85}
               onPress={handleOpenDetail}
             >
-              <Text style={styles.pinButtonText}>📍 핀하기</Text>
+              <Text style={styles.pinButtonText}>상세정보</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -474,6 +718,85 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     fontSize: 12,
     fontWeight: '800',
+    color: ScreenTheme.muted,
+  },
+  surveyGroupTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginBottom: 8,
+  },
+  surveyGroupTitleInRow: {
+    // 행(Row)이 아래 여백을 담당하므로 제목 자체 여백은 끈다(이중 여백 방지).
+    marginBottom: 0,
+  },
+  helpOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    paddingHorizontal: 26,
+  },
+  helpCard: {
+    maxHeight: '78%',
+    borderRadius: 20,
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 12,
+  },
+  helpHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  helpTitle: {
+    fontFamily: Fonts.serif,
+    fontSize: 17,
+    fontWeight: '800',
+    color: ScreenTheme.text,
+  },
+  helpNotice: {
+    marginBottom: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: '#eef5ee',
+    fontSize: 12,
+    lineHeight: 18,
+    fontWeight: '700',
+    color: ScreenTheme.greenDeep,
+  },
+  helpScroll: {
+    flexGrow: 0,
+  },
+  helpItem: {
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0ede4',
+  },
+  helpItemLabel: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: ScreenTheme.text,
+  },
+  helpItemDesc: {
+    marginTop: 4,
+    fontSize: 13,
+    lineHeight: 20,
+    color: '#4a4a45',
+  },
+  // 혼잡도 안내 모달 본문 — 테마 설명(helpItemDesc)과 같은 톤, 문단 사이 여백만 넉넉히.
+  helpParagraph: {
+    marginBottom: 14,
+    fontSize: 13,
+    lineHeight: 21,
+    color: '#4a4a45',
+  },
+  helpItemExamples: {
+    marginTop: 3,
+    fontSize: 12,
+    lineHeight: 18,
     color: ScreenTheme.muted,
   },
   surveyStartButton: {

@@ -3,7 +3,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { HomeActionCards } from '@/components/home/HomeActionCards';
 import { HomeHeader } from '@/components/home/HomeHeader';
-import { HomeServiceBanner } from '@/components/home/HomeServiceBanner';
 import { RecentPinSection } from '@/components/home/RecentPinSection';
 
 const HomeTheme = {
@@ -20,7 +19,6 @@ export default function HomeScreen() {
       >
         <HomeHeader />
         <HomeActionCards />
-        <HomeServiceBanner />
         <RecentPinSection />
       </ScrollView>
     </SafeAreaView>

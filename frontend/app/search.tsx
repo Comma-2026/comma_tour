@@ -81,7 +81,7 @@ export default function SearchScreen() {
 
     const goDetail = (spot: SpotCatalogItem) => {
         // from 파라미터 없이 열면 "이 여행지로 정하기"(핀 추가) 버튼이 있는 기본 모드.
-        router.push({ pathname: '/pindraw/detail', params: { id: spot.id } });
+        router.push({ pathname: '/spot-detail', params: { id: spot.id } });
     };
 
     return (

@@ -74,7 +74,6 @@ export default function DiaryScreen() {
                 contentId: pin.contentId,
                 placeName: pin.place_name,
                 region: pin.region,
-                visitedAt: pin.visited_at,
             },
         });
     };
@@ -88,7 +87,6 @@ export default function DiaryScreen() {
                 contentId: diary.content_id ?? '',
                 placeName: diary.place_name,
                 region: diary.region,
-                visitedAt: diary.visited_at ?? '',
             },
         });
     };

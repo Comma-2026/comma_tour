@@ -37,10 +37,9 @@ export default function DiaryDetailScreen() {
     contentId?: string;
     placeName: string;
     region?: string;
-    visitedAt?: string;
   }>();
 
-  const { pinId, contentId, placeName, region, visitedAt } = params;
+  const { pinId, contentId, placeName, region } = params;
 
   const [diary, setDiary] = useState<Diary | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -66,7 +65,7 @@ export default function DiaryDetailScreen() {
   const goEdit = () => {
     router.push({
       pathname: '/diary-write',
-      params: { pinId, contentId: contentId ?? '', placeName, region: region ?? '', visitedAt: visitedAt ?? '' },
+      params: { pinId, contentId: contentId ?? '', placeName, region: region ?? '' },
     });
   };
 
@@ -97,7 +96,10 @@ export default function DiaryDetailScreen() {
             <Text style={styles.placeLabel}>📍 이 핀에 남긴 일기</Text>
             <Text style={styles.placeName}>{placeName}</Text>
             {!!region && <Text style={styles.placeRegion}>{region}</Text>}
-            {!!visitedAt && <Text style={styles.placeDate}>방문일 · {visitedAt}</Text>}
+            {/* 방문일은 사용자가 일기에 직접 적은 값만 보여준다(핀 생성일 자동 표시 아님). */}
+            {!!diary.visited_at && (
+              <Text style={styles.placeDate}>방문일 · {diary.visited_at}</Text>
+            )}
           </View>
 
           {diary.has_photo && (

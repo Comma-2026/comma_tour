@@ -1,6 +1,8 @@
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useRouter } from 'expo-router';
 
-import type { RecentPin } from '@/constants/HomeMockData';
+import { CATEGORY_EMOJI, toSpotCategory } from '@/constants/spotCategory';
+import type { Pin } from '@/types/pin';
 
 const HomeTheme = {
     greenDeep: '#1a3a2a',
@@ -10,30 +12,38 @@ const HomeTheme = {
 };
 
 type RecentPinCardProps = {
-    item: RecentPin;
+    pin: Pin;
 };
 
-export function RecentPinCard({ item }: RecentPinCardProps) {
+export function RecentPinCard({ pin }: RecentPinCardProps) {
+    const router = useRouter();
+
     return (
         <TouchableOpacity
             style={styles.card}
             activeOpacity={0.82}
-            onPress={() => {
-                // TODO: 상세 페이지 연결 예정
-            }}
+            onPress={() =>
+                // 핀 기록 화면의 카드와 동일한 읽기 전용 상세(길찾기만)로 연다.
+                router.push({
+                    pathname: '/spot-detail',
+                    params: { id: pin.contentId, from: 'records' },
+                })
+            }
         >
             <View style={styles.iconBox}>
-                <Text style={styles.icon}>{item.icon}</Text>
+                <Text style={styles.icon}>{CATEGORY_EMOJI[toSpotCategory(pin.category)]}</Text>
             </View>
 
             <View style={styles.content}>
                 <Text style={styles.title} numberOfLines={1}>
-                    {item.title}
+                    {pin.place_name}
                 </Text>
-                <Text style={styles.region}>{item.region}</Text>
-                <Text style={styles.memo} numberOfLines={1}>
-                    {item.memo}
-                </Text>
+                <Text style={styles.region}>{pin.region}</Text>
+                {(pin.phrase || pin.memo) && (
+                    <Text style={styles.memo} numberOfLines={1}>
+                        {pin.phrase ?? pin.memo}
+                    </Text>
+                )}
             </View>
 
             <Text style={styles.arrow}>›</Text>

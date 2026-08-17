@@ -38,6 +38,8 @@ export default function RootLayout() {
         <Stack.Screen name="pin-records" options={{ headerShown: false }} />
         {/* 홈 "장소 검색" */}
         <Stack.Screen name="search" options={{ headerShown: false }} />
+        {/* 관광지 상세 — 탭 밖(루트)에 둬야 어디서 열든 '목록으로'가 이전 화면으로 돌아간다 */}
+        <Stack.Screen name="spot-detail" options={{ headerShown: false }} />
         {/* 다이어리 일기 상세(읽기) */}
         <Stack.Screen name="diary-detail" options={{ headerShown: false }} />
         {/* 다이어리 일기 작성/수정 */}

@@ -9,7 +9,10 @@ real 모드 설계:
       (박물관·미술관 같은 문화시설은 12가 아니라 14로 등록돼 있어 12만으로는 못 가져왔다).
       14/28/38은 소분류(lclsSystm3) 기준으로 관광지 성격이 뚜렷한 것만 골라 넣는다.
       + 시군구별 `tatsCnctrRatedList`(집중률)를 호출한다. 집중률은 시군구 단위로만 조회
-      가능해서, 목록에 등장하는 시군구별로 한 번씩만 호출하고 관광지명으로 매칭한다.
+      가능해서, 목록에 등장하는 시군구별로 한 번씩만 호출하고 관광지명으로 매칭한다
+      (정확히 안 맞으면 공백/괄호 제거한 정규화 이름으로 한 번 더 시도 — `_lookup_congestion_rate`).
+      그래도 못 찾으면(실측 기준 약 63% — 집중률 API 자체에 데이터가 없는 경우가 대부분)
+      "보통"으로 임의 추정하지 않고 congestion="정보 없음"/congestionLevel="unknown"으로 표시한다.
     - 상세 조회(get_spot_by_id)에서만 `detailCommon2`(개요) + `detailIntro2`(이용시간/주차)
       + `detailPetTour2`(반려동물 동반 여부) + `detailInfo2`(입장료/시설이용료)를 추가로 호출해
       정보를 채운다.
@@ -284,6 +287,19 @@ def _congestion_level(rate: float) -> tuple[str, str]:
     return "혼잡", "crowded"
 
 
+# 공백/괄호 안 내용/특수문자 차이로 놓치는 이름 매칭을 흡수하기 위한 정규화.
+# (예: "감응사(성주)" ↔ "감응사(경북)", "내연산 보경사 시립공원" ↔ "내연산보경사시립공원")
+# 실측해보니 이걸로 건지는 건 전체의 2.7%p뿐이고, 나머지 대부분은 집중률 API 자체에
+# 데이터가 없는 것(매칭 문제가 아님) — _base_fields의 "정보 없음" 폴백이 그 경우를 담당한다.
+_NON_ALNUM_KO = re.compile(r"[^\w가-힣]")
+_PAREN_CONTENT = re.compile(r"\(.*?\)")
+
+
+def _normalize_spot_name(name: str) -> str:
+    name = _PAREN_CONTENT.sub("", name)
+    return _NON_ALNUM_KO.sub("", name).strip()
+
+
 @_ttl_cache(config.SPOT_CACHE_TTL_SECONDS)
 def _fetch_congestion_map(signgu_cd: str) -> dict[str, float]:
     """해당 시군구의 오늘 날짜 관광지별 집중률(%)을 {관광지명: 집중률} 형태로 반환.
@@ -316,6 +332,20 @@ def _fetch_congestion_map(signgu_cd: str) -> dict[str, float]:
         for item in items
         if item.get("baseYmd") == today
     }
+
+
+def _lookup_congestion_rate(congestion_map: dict[str, float], title: str) -> float | None:
+    """정확한 이름으로 먼저 찾고, 없으면 정규화한 이름으로 한 번 더 찾는다."""
+    if title in congestion_map:
+        return congestion_map[title]
+
+    normalized_title = _normalize_spot_name(title)
+    if not normalized_title:
+        return None
+    for name, rate in congestion_map.items():
+        if _normalize_spot_name(name) == normalized_title:
+            return rate
+    return None
 
 
 def _extract_fee(info_items: list[dict]) -> str | None:
@@ -386,7 +416,9 @@ def _base_fields(
     if congestion_rate is not None:
         congestion, congestion_level = _congestion_level(congestion_rate)
     else:
-        congestion, congestion_level = "보통", "moderate"  # 집중률 매칭 실패 시 기본값
+        # 집중률 API에 이 관광지 데이터 자체가 없는 경우(매칭 실패) — "보통"으로 임의 추정하지
+        # 않고 데이터가 없다는 걸 그대로 보여준다. 실측 기준 경북 스팟의 약 63%가 여기 해당된다.
+        congestion, congestion_level = "정보 없음", "unknown"
 
     tags = []
     lcls_tag = _LCLS_SYSTM1_TAG_MAP.get(item.get("lclsSystm1", ""))
@@ -429,7 +461,8 @@ def _base_fields(
 # 스팟 스키마가 바뀔 때마다 1씩 올린다. 버전이 다른 디스크 캐시(옛 코드가 만든 것)는
 # 무시하고 새로 받아온다 — 옛 캐시에 새 필드(예: category)가 없어 KeyError 나는 것 방지.
 # v3: _sourceContentTypeId 추가 + 목록 출처가 12 하나에서 12/14/28/38로 확장됨.
-_CACHE_SCHEMA_VERSION = 3
+# v4: 집중률 매칭 실패 시 폴백이 "보통"/moderate에서 "정보 없음"/unknown으로 바뀜.
+_CACHE_SCHEMA_VERSION = 4
 
 
 def _load_disk_cache() -> list[dict] | None:
@@ -493,7 +526,7 @@ def _real_get_all_spots() -> list[dict]:
 
     spots = []
     for item in raw_items:
-        rate = congestion_cache[_signgu_cd(item)].get(item["title"])
+        rate = _lookup_congestion_rate(congestion_cache[_signgu_cd(item)], item["title"])
         spots.append(_base_fields(item, rate, wellness_ids, content_type_id=item["_fetchedContentTypeId"]))
 
     _save_disk_cache(spots)
@@ -514,7 +547,7 @@ def _real_get_spot_by_id(spot_id: str) -> dict | None:
     item = common[0]
     content_type_id = int(item.get("contenttypeid") or _CONTENT_TYPE_ID)
 
-    rate = _fetch_congestion_map(_signgu_cd(item)).get(item["title"])
+    rate = _lookup_congestion_rate(_fetch_congestion_map(_signgu_cd(item)), item["title"])
     spot = _base_fields(item, rate, _fetch_wellness_ids(), content_type_id=content_type_id)
 
     overview = item.get("overview", "")
