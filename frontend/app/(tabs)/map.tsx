@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
     FlatList,
     ScrollView,
     StyleSheet,
@@ -15,13 +16,15 @@ import WebView, { type WebViewMessageEvent } from 'react-native-webview';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { GestureHandlerRootView, Swipeable } from 'react-native-gesture-handler';
+import Svg, { Path } from 'react-native-svg';
 
 import { API_BASE_URL } from '@/constants/api';
 import { CATEGORY_EMOJI, CATEGORY_ICON_BG, CATEGORY_LABEL, toSpotCategory } from '@/constants/spotCategory';
 import { Fonts } from '@/constants/theme';
 import type { Pin } from '@/types/pin';
 import type { SpotCategory, SpotMarker } from '@/types/spot';
-import { getPins } from '@/utils/pinStorage';
+import { deletePin, getPins } from '@/utils/pinStorage';
 
 const ScreenTheme = {
     background: '#f7f4ef',
@@ -272,13 +275,32 @@ function SpotCard({
     spot,
     onPress,
     onDetailPress,
+    onDelete,
 }: {
     spot: SpotMarker;
     onPress: () => void;
     onDetailPress: () => void;
+    onDelete: () => void;
 }) {
+    // 핀 기록 화면(pin-records)의 카드와 동일한 스와이프 삭제 — 왼쪽으로 밀면 빨간 휴지통.
+    const renderRightActions = () => (
+        <TouchableOpacity
+            style={styles.deleteAction}
+            activeOpacity={0.85}
+            onPress={onDelete}
+            accessibilityRole="button"
+            accessibilityLabel={`${spot.place_name} 핀 삭제`}
+        >
+            <Svg width={24} height={24} viewBox="0 0 16 16" fill="white">
+                <Path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z" fill="white" />
+                <Path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z" fill="white" />
+            </Svg>
+        </TouchableOpacity>
+    );
+
     return (
-        <View style={styles.card}>
+        <Swipeable renderRightActions={renderRightActions} overshootRight={false}>
+            <View style={styles.card}>
             <TouchableOpacity style={styles.cardMain} activeOpacity={0.85} onPress={onPress}>
                 <View style={[styles.cardIcon, { backgroundColor: CATEGORY_ICON_BG[spot.category] }]}>
                     <Text style={styles.cardIconText}>{CATEGORY_EMOJI[spot.category]}</Text>
@@ -309,7 +331,8 @@ function SpotCard({
             >
                 <Ionicons name="chevron-forward" size={22} color={ScreenTheme.deepGreen} />
             </TouchableOpacity>
-        </View>
+            </View>
+        </Swipeable>
     );
 }
 
@@ -400,6 +423,21 @@ export default function MapScreen() {
         router.push({ pathname: '/spot-detail', params: { id: spot.contentId, from: 'records' } });
     };
 
+    // 핀 기록 화면과 동일한 삭제 흐름 — 확인창 후 로컬 저장소에서 지우고 목록/지도 마커 갱신.
+    const handleDeletePin = (spot: SpotMarker) => {
+        Alert.alert('핀 삭제', '이 저장된 핀을 삭제할까요?', [
+            { text: '취소', style: 'cancel' },
+            {
+                text: '삭제',
+                style: 'destructive',
+                onPress: async () => {
+                    await deletePin(spot.id);
+                    setSpots((prev) => prev.filter((s) => s.id !== spot.id));
+                },
+            },
+        ]);
+    };
+
     if (!KAKAO_MAP_KEY) {
         return (
             <View style={styles.container}>
@@ -413,6 +451,7 @@ export default function MapScreen() {
     }
 
     return (
+        <GestureHandlerRootView style={styles.gestureRoot}>
         <SafeAreaView style={styles.safe} edges={['top']}>
             <View style={styles.header}>
                 <Text style={styles.headerLabel}>지도</Text>
@@ -512,6 +551,7 @@ export default function MapScreen() {
                                 spot={item}
                                 onPress={() => handleCardPress(item)}
                                 onDetailPress={() => handleDetailPress(item)}
+                                onDelete={() => handleDeletePin(item)}
                             />
                         )}
                         contentContainerStyle={styles.listContent}
@@ -525,6 +565,7 @@ export default function MapScreen() {
                 </>
             )}
         </SafeAreaView>
+        </GestureHandlerRootView>
     );
 }
 
@@ -535,9 +576,22 @@ const styles = StyleSheet.create({
         paddingTop: 72,
         backgroundColor: ScreenTheme.background,
     },
+    gestureRoot: {
+        flex: 1,
+        backgroundColor: ScreenTheme.background,
+    },
     safe: {
         flex: 1,
         backgroundColor: ScreenTheme.background,
+    },
+    deleteAction: {
+        width: 74,
+        marginLeft: 10,
+        marginBottom: 12,
+        borderRadius: 16,
+        backgroundColor: '#d94b4b',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     header: {
         paddingHorizontal: 20,
