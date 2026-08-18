@@ -159,8 +159,15 @@ _CATEGORY_MAP = {
     "EX": "체험",
 }
 
+# 12 외 출처는 대분류 코드가 위 4종 밖이라(시장=SH, 레포츠=LS 등 → "기타"로 빠짐)
+# 출처(contentTypeId) 기준으로 고정 분류한다: 문화시설(14)·시장(38)=문화, 레포츠(28)=체험.
+_SOURCE_CATEGORY_MAP = {14: "문화", 28: "체험", 38: "문화"}
 
-def _classify_category(lcls_systm1: str) -> str:
+
+def _classify_category(lcls_systm1: str, content_type_id: int) -> str:
+    source_category = _SOURCE_CATEGORY_MAP.get(content_type_id)
+    if source_category is not None:
+        return source_category
     return _CATEGORY_MAP.get(lcls_systm1, "기타")
 
 # 대구 기준 배편이 필요해 직선거리 추정이 무의미한 지역(법정동 시군구코드) 제외
@@ -436,7 +443,7 @@ def _base_fields(
         "region": addr1.split(" ")[1] if addr1 else "경상북도",
         "icon": "📍",
         "imageUrl": _to_https(item.get("firstimage") or None),
-        "category": _classify_category(item.get("lclsSystm1", "")),
+        "category": _classify_category(item.get("lclsSystm1", ""), content_type_id),
         # 12 외 출처(14/28/38)에서 왔는지 표시 — 프론트엔 안 내려가고(카드/상세 필드 목록에 없음)
         # spots_service의 추천 풀 게이팅(레저스포츠는 선택 시에만 노출)에서만 쓴다.
         "_sourceContentTypeId": content_type_id,
@@ -462,7 +469,9 @@ def _base_fields(
 # 무시하고 새로 받아온다 — 옛 캐시에 새 필드(예: category)가 없어 KeyError 나는 것 방지.
 # v3: _sourceContentTypeId 추가 + 목록 출처가 12 하나에서 12/14/28/38로 확장됨.
 # v4: 집중률 매칭 실패 시 폴백이 "보통"/moderate에서 "정보 없음"/unknown으로 바뀜.
-_CACHE_SCHEMA_VERSION = 4
+# v5: category 분류가 출처 기준 보정됨 — 문화시설(14)·시장(38)=문화, 레포츠(28)=체험
+#     (이전엔 시장=기타, 레포츠=기타/문화(VE10)로 찍혔음).
+_CACHE_SCHEMA_VERSION = 5
 
 
 def _load_disk_cache() -> list[dict] | None:
