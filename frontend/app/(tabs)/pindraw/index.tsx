@@ -17,7 +17,6 @@ import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
-  DEBUG_SOURCE_TYPES,
   FEEDBACK_TAGS,
   PREFERENCE_TAG_GROUPS,
   THEME_CATEGORIES,
@@ -287,6 +286,34 @@ export default function PinDrawScreen() {
                     )}
                   </View>
                   <View style={styles.chipRow}>
+                    {/* "기본" 그룹은 라디오 방식(테마별의 "전체" 패턴과 동일):
+                        "기본" = 필터 없음 ↔ "조용한 곳이 좋아요" = 한적한 곳 필터. */}
+                    {group.title === '기본' && (
+                      <TouchableOpacity
+                        style={[
+                          styles.chip,
+                          !preference.has('want_quieter') && styles.chipSelected,
+                        ]}
+                        activeOpacity={0.8}
+                        onPress={() =>
+                          setPreference((prev) => {
+                            const next = new Set(prev);
+                            next.delete('want_quieter');
+                            return next;
+                          })
+                        }
+                      >
+                        <Text
+                          style={[
+                            styles.chipText,
+                            !preference.has('want_quieter') &&
+                              styles.chipTextSelected,
+                          ]}
+                        >
+                          기본
+                        </Text>
+                      </TouchableOpacity>
+                    )}
                     {group.tags.map((tag) => {
                       const selected = preference.has(tag.id);
                       return (
@@ -431,50 +458,6 @@ export default function PinDrawScreen() {
               </View>
             ))}
 
-            <View style={styles.surveyGroup}>
-              <Text style={styles.surveyGroupTitle}>
-                🔧 (테스트) 출처별로만 뽑기
-              </Text>
-              <View style={styles.chipRow}>
-                <TouchableOpacity
-                  style={[
-                    styles.chip,
-                    debugSourceType === null && styles.chipSelected,
-                  ]}
-                  activeOpacity={0.8}
-                  onPress={() => setDebugSourceType(null)}
-                >
-                  <Text
-                    style={[
-                      styles.chipText,
-                      debugSourceType === null && styles.chipTextSelected,
-                    ]}
-                  >
-                    전체
-                  </Text>
-                </TouchableOpacity>
-                {DEBUG_SOURCE_TYPES.map((type) => {
-                  const selected = debugSourceType === type.id;
-                  return (
-                    <TouchableOpacity
-                      key={type.id}
-                      style={[styles.chip, selected && styles.chipSelected]}
-                      activeOpacity={0.8}
-                      onPress={() => setDebugSourceType(type.id)}
-                    >
-                      <Text
-                        style={[
-                          styles.chipText,
-                          selected && styles.chipTextSelected,
-                        ]}
-                      >
-                        {type.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
           </ScrollView>
 
           <TouchableOpacity
