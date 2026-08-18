@@ -79,7 +79,6 @@ export const PREFERENCE_TAG_GROUPS: { title: string; tags: { id: string; label: 
       { id: 'free_only', label: '무료로 즐기고 싶어요' },
       { id: 'parking_required', label: '주차가 꼭 가능해야 해요' },
       { id: 'pet_friendly', label: '반려동물과 함께해요' },
-      { id: 'leisure_sports', label: '레저스포츠를 즐기고 싶어요' },
     ],
   },
 ];
@@ -136,6 +135,12 @@ export const THEME_CATEGORIES: {
     label: '시장',
     description: '지역 특산물과 먹거리를 만날 수 있는 전통시장이에요.',
     examples: '상설시장, 5일장 등 비상설시장',
+  },
+  {
+    id: 'leisure_sports',
+    label: '레저스포츠',
+    description: '골프, 래프팅, 패러글라이딩처럼 몸으로 직접 즐기는 레저·스포츠 활동이에요.',
+    examples: '스키·썰매장, 카약·래프팅, 승마, 패러글라이딩',
   },
 ];
 
