@@ -59,19 +59,15 @@ export const WANT_QUIETER_HELP_PARAGRAPHS: string[] = [
 ];
 
 /**
- * 첫 진입 선호 설문 칩(체크박스, 다중 선택). id는 백엔드 필터 키와 1:1로 맞춘다.
- * 그룹 구분은 UI/UX 가독성용일 뿐, 알고리즘(필터 적용)에는 영향을 주지 않는다 — 선택된 id들은 그대로 합쳐져 전달된다.
+ * 첫 진입 선호 설문 칩. id는 백엔드 필터 키와 1:1로 맞춘다.
+ * - "기본" 그룹: "기본"(필터 없음, UI에서 하드코딩) ↔ "조용한 곳이 좋아요" 둘 중 하나만
+ *   선택되는 라디오 방식(테마별의 "전체" 패턴과 동일). "조용한 곳"을 눌렀을 때만 필터 적용.
+ * - "기타" 그룹: 체크박스(다중 선택).
  */
 export const PREFERENCE_TAG_GROUPS: { title: string; tags: { id: string; label: string }[] }[] = [
   {
     title: '기본',
-    tags: [
-      { id: 'too_far', label: '가까운 곳이 좋아요' },
-      { id: 'want_quieter', label: '조용한 곳이 좋아요' },
-      { id: 'want_food', label: '먹거리도 있었으면 해요' },
-      { id: 'no_walking', label: '걷기 싫어요' },
-      { id: 'lacking_sights', label: '볼거리가 필요해요' },
-    ],
+    tags: [{ id: 'want_quieter', label: '조용한 곳이 좋아요' }],
   },
   {
     title: '기타',
