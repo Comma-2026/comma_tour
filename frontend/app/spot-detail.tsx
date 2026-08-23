@@ -38,9 +38,11 @@ export default function SpotDetailScreen() {
   const [saving, setSaving] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
   const [pinStatusLoading, setPinStatusLoading] = useState(true);
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
 
   useEffect(() => {
     if (!id) return;
+    setDescriptionExpanded(false);
     fetchSpotDetail(id).then((result) => {
       setSpot(result);
       setLoading(false);
@@ -70,6 +72,8 @@ export default function SpotDetailScreen() {
 
   // 내 위치 기준 거리 라벨(위치 확인 중/권한 없음 상태도 문구로 표시).
   const distanceLabel = useSpotDistance(spot);
+  const description = spot?.fullDesc || spot?.shortDesc || '';
+  const canExpandDescription = description.length > 70;
 
   /**
    * 카카오맵 길찾기. expo-location으로 현재 위치를 받아 출발지로,
@@ -180,7 +184,29 @@ export default function SpotDetailScreen() {
             <Text style={styles.bannerTagRight}>● {spot.congestion}</Text>
           </View>
 
-          <Text style={styles.fullDesc}>{spot.shortDesc}</Text>
+          <TouchableOpacity
+            style={styles.descriptionBox}
+            activeOpacity={canExpandDescription ? 0.7 : 1}
+            onPress={() => {
+              if (canExpandDescription) {
+                setDescriptionExpanded((expanded) => !expanded);
+              }
+            }}
+            disabled={!canExpandDescription}
+            accessibilityRole={canExpandDescription ? 'button' : undefined}
+            accessibilityLabel={
+              canExpandDescription
+                ? `관광지 설명 ${descriptionExpanded ? '접기' : '펼치기'}`
+                : undefined
+            }
+          >
+            <Text
+              style={styles.fullDesc}
+              numberOfLines={descriptionExpanded ? undefined : 3}
+            >
+              {description}
+            </Text>
+          </TouchableOpacity>
 
           <View style={styles.infoCard}>
             <InfoRow label="지역" value={spot.region} />
@@ -339,8 +365,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#ffffff',
   },
-  fullDesc: {
+  descriptionBox: {
     marginTop: 14,
+  },
+  fullDesc: {
     fontSize: 14,
     lineHeight: 22,
     fontStyle: 'italic',

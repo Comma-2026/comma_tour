@@ -449,6 +449,7 @@ def _base_fields(
         "_sourceContentTypeId": content_type_id,
         "tags": tags,
         "shortDesc": addr1,
+        "fullDesc": addr1,
         "congestion": congestion,
         "congestionLevel": congestion_level,
         "distanceFromDaegu": distance_label,
@@ -559,8 +560,9 @@ def _real_get_spot_by_id(spot_id: str) -> dict | None:
     rate = _lookup_congestion_rate(_fetch_congestion_map(_signgu_cd(item)), item["title"])
     spot = _base_fields(item, rate, _fetch_wellness_ids(), content_type_id=content_type_id)
 
-    overview = item.get("overview", "")
+    overview = _strip_html(item.get("overview", ""))
     if overview:
+        spot["fullDesc"] = overview
         spot["shortDesc"] = overview[:80] + ("…" if len(overview) > 80 else "")
 
     intro = _tour_api_get("detailIntro2", contentId=spot_id, contentTypeId=content_type_id)
