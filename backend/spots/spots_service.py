@@ -31,7 +31,6 @@ _FEEDBACK_FILTERS = {
     "free_only": lambda s: s["admissionFee"] == "무료",
     "parking_required": lambda s: s["hasParking"],
     "pet_friendly": lambda s: s["petFriendly"],
-    "leisure_sports": lambda s: s.get("_sourceContentTypeId") == _LEISURE_CONTENT_TYPE_ID,
 }
 
 # 설문 "테마별" 다중 선택(전체 + 6종, 중복 선택 가능) → 추천 풀을 좁히는 하드 필터.
@@ -48,6 +47,7 @@ _THEME_FILTERS = {
     "history_tourism": lambda s: s["category"] == "역사",
     "culture_facility": lambda s: s.get("_sourceContentTypeId") == 14,
     "market": lambda s: s.get("_sourceContentTypeId") == 38,
+    "leisure_sports": lambda s: s.get("_sourceContentTypeId") == _LEISURE_CONTENT_TYPE_ID,
 }
 
 
@@ -76,12 +76,17 @@ def recommend_spots(
       결과가 비어도 다른 테마로 안 샌다. 여러 개면 그 중 하나라도 맞으면 포함(OR).
     - 제외하고 나면 count개가 안 남을 경우, (regions/themes 필터가 있다면 그 안에서만) 다시 뽑는다.
     - feedback_tags가 있으면 순서대로 필터를 적용하되, 필터 적용 결과가 비면 그 필터는 건너뛴다.
-    - 레포츠(28번 출처) 스팟은 다른 테마 태그와 달리 기본 풀에 아예 없다가, "leisure_sports"를
-      선택했을 때만 풀에 들어온다(선택 안 하면 추천에 절대 안 나옴 — 좁히는 게 아니라 켜고 끄는 것).
+    - 레포츠(28번 출처) 스팟은 기본 풀에 아예 없다가, 테마별 "레저스포츠"를 선택했을 때만
+      풀에 들어온다(선택 안 하면 추천에 절대 안 나옴 — 좁히는 게 아니라 켜고 끄는 것).
     - source_content_type(디버그용, 예: 14=문화시설)이 있으면 그 출처(contentTypeId)에서 온
       스팟만 대상으로 한다 — 12/14/28/38 각각이 실제로 잘 불러와졌는지 확인하는 용도.
     """
-    wants_leisure = "leisure_sports" in (feedback_tags or []) or source_content_type == _LEISURE_CONTENT_TYPE_ID
+    # 레포츠(28)는 기본 풀에서 제외돼 있으므로, 테마별 "레저스포츠" 또는 디버그 출처로
+    # 선택했을 때만 풀에 편입시킨다(안 그러면 테마 필터와 겹쳐 결과가 0이 됨).
+    wants_leisure = (
+        "leisure_sports" in (themes or [])
+        or source_content_type == _LEISURE_CONTENT_TYPE_ID
+    )
     theme_filter_fns = [_THEME_FILTERS[t] for t in (themes or []) if t in _THEME_FILTERS]
     region_set = set(regions or [])
 
