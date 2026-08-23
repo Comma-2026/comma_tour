@@ -17,7 +17,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
 import { API_BASE_URL } from '@/constants/api';
-import { CATEGORY_EMOJI, CATEGORY_ICON_BG, CATEGORY_LABEL, toSpotCategory } from '@/constants/spotCategory';
+import {
+    CATEGORY_EMOJI,
+    CATEGORY_ICON_BG,
+    CATEGORY_LABEL,
+    CATEGORY_MARKER_COLOR,
+    toSpotCategory,
+} from '@/constants/spotCategory';
 import { Fonts } from '@/constants/theme';
 import type { Pin } from '@/types/pin';
 import type { SpotCategory, SpotMarker } from '@/types/spot';
@@ -60,7 +66,12 @@ function toSpotMarker(pin: Pin): SpotMarker {
     };
 }
 
-function buildMapHtml(appkey: string): string {
+function buildMapHtml(
+    appkey: string,
+    categoryEmoji: Record<SpotCategory, string>,
+    categoryColor: Record<SpotCategory, string>,
+    accentColor: string,
+): string {
     return `<!DOCTYPE html>
 <html>
 <head>
@@ -94,35 +105,57 @@ function buildMapHtml(appkey: string): string {
     onerror="showStatus('카카오맵 SDK 스크립트 로드 실패 (네트워크 연결 또는 앱키 확인)')"
   ></script>
   <script>
-    const CATEGORY_EMOJI = { nature: '🏔', history: '⛩', culture: '🏙', experience: '🎨', night: '🌃', etc: '📍' };
+    // 카테고리 이모지/색은 RN 쪽 constants/spotCategory.ts에서 그대로 직렬화해 받는다(중복 관리 없음).
+    const CATEGORY_EMOJI = ${JSON.stringify(categoryEmoji)};
+    const CATEGORY_COLOR = ${JSON.stringify(categoryColor)};
+    const ACCENT_COLOR = ${JSON.stringify(accentColor)};
 
     const MAX_WAIT_MS = 8000;
     const POLL_INTERVAL_MS = 200;
     let waited = 0;
 
     let map = null;
-    let currentOverlays = [];
+    let currentMarkers = [];
     let openInfowindow = null;
 
     function closeOpenInfowindow() {
       if (openInfowindow) {
-        openInfowindow.close();
+        openInfowindow.setMap(null);
         openInfowindow = null;
       }
     }
 
     function openInfowindowFor(infowindow) {
       closeOpenInfowindow();
-      infowindow.open(map);
+      infowindow.setMap(map);
       openInfowindow = infowindow;
     }
 
     function clearOverlays() {
       closeOpenInfowindow();
-      currentOverlays.forEach(function (item) {
-        item.overlay.setMap(null);
+      currentMarkers.forEach(function (item) {
+        item.marker.setMap(null);
       });
-      currentOverlays = [];
+      currentMarkers = [];
+    }
+
+    // 카테고리 색으로 채운 물방울 모양 배지 핀(중앙 흰 원 위에 이모지)을 SVG로 그려 마커 이미지로 쓴다.
+    function pinMarkerImage(category) {
+      const color = CATEGORY_COLOR[category] || CATEGORY_COLOR.etc;
+      const emoji = CATEGORY_EMOJI[category] || CATEGORY_EMOJI.etc;
+      const svg =
+        '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="52" viewBox="0 0 40 52">' +
+        '<path d="M20 2C10.6 2 3 9.6 3 19c0 12.4 17 31 17 31s17-18.6 17-31C37 9.6 29.4 2 20 2z" ' +
+        'fill="' + color + '" stroke="#ffffff" stroke-width="2.5"/>' +
+        '<circle cx="20" cy="19" r="12" fill="rgba(255,255,255,0.95)"/>' +
+        '<text x="20" y="19" font-size="17" text-anchor="middle" dominant-baseline="central">' + emoji + '</text>' +
+        '</svg>';
+      const dataUri = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+      return new kakao.maps.MarkerImage(
+        dataUri,
+        new kakao.maps.Size(40, 52),
+        { offset: new kakao.maps.Point(20, 50) }
+      );
     }
 
     function renderMarkers(spots) {
@@ -142,38 +175,32 @@ function buildMapHtml(appkey: string): string {
         const position = new kakao.maps.LatLng(spot.latitude, spot.longitude);
         bounds.extend(position);
 
-        const el = document.createElement('div');
-        el.textContent = CATEGORY_EMOJI[spot.category] || '📍';
-        el.style.fontSize = '26px';
-        el.style.lineHeight = '1';
-        el.style.cursor = 'pointer';
-
-        // 이모지 글꼴은 글리프 아래쪽(베이스라인 아래)에 자체 여백이 있어, 박스 맨아래(=좌표)보다
-        // 그림이 살짝 떠 보인다. 보이는 그림의 아래끝이 좌표에 닿도록 아래로 미세 보정한다.
-        // (% 기준 = 아이콘 높이 26px. 어긋나 보이면 카테고리별로 이 값만 조정하면 된다)
-        const EMOJI_NUDGE_Y = { nature: '12%', culture: '12%', night: '12%', etc: '10%' };
-        el.style.transform = 'translateY(' + (EMOJI_NUDGE_Y[spot.category] || '10%') + ')';
-
-        // 위치 지정은 CustomOverlay의 anchor로 한다(xAnchor 0.5 = 가로 중앙, yAnchor 1 = 세로 맨아래).
-        // 위 translateY는 글꼴 여백 보정용 소량 이동일 뿐, 앵커를 대신하면 안 된다.
-        const overlay = new kakao.maps.CustomOverlay({
+        const marker = new kakao.maps.Marker({
           position: position,
-          content: el,
-          xAnchor: 0.5,
-          yAnchor: 1,
+          image: pinMarkerImage(spot.category),
         });
-        overlay.setMap(map);
+        marker.setMap(map);
 
-        const infowindow = new kakao.maps.InfoWindow({
+        // InfoWindow는 카카오 기본 말풍선(테두리+꼬리)이 항상 덧씌워져서 폭이 내용에 안 맞았다.
+        // CustomOverlay는 순수히 우리 HTML만 그려서(기본 스킨 없음) 텍스트 길이에 맞춰 자연스럽게 늘고 준다.
+        const infoColor = CATEGORY_COLOR[spot.category] || ACCENT_COLOR;
+        const infowindow = new kakao.maps.CustomOverlay({
           position: position,
+          xAnchor: 0.5,
+          yAnchor: 1.35,
+          zIndex: 10,
           content:
-            '<div style="padding:8px 10px;font-size:12px;line-height:1.5;min-width:120px;">' +
-            '<strong>' + spot.place_name + '</strong><br/>' +
-            '<span style="color:#888;">' + spot.region + '</span>' +
+            '<div style="display:inline-block;max-width:220px;overflow:hidden;border-radius:10px;' +
+            'background:#ffffff;box-shadow:0 2px 8px rgba(0,0,0,0.2);">' +
+            '<div style="height:4px;background:' + infoColor + ';"></div>' +
+            '<div style="padding:9px 12px;font-size:12px;line-height:1.5;font-family:sans-serif;">' +
+            '<strong style="display:block;margin-bottom:3px;font-size:13px;color:#1A1A1A;">' + spot.place_name + '</strong>' +
+            '<span style="color:#888888;">📍 ' + spot.region + '</span>' +
+            '</div>' +
             '</div>',
         });
 
-        el.addEventListener('click', function () {
+        kakao.maps.event.addListener(marker, 'click', function () {
           openInfowindowFor(infowindow);
           if (window.ReactNativeWebView) {
             window.ReactNativeWebView.postMessage(
@@ -182,7 +209,7 @@ function buildMapHtml(appkey: string): string {
           }
         });
 
-        currentOverlays.push({ overlay: overlay, infowindow: infowindow, position: position, contentId: spot.contentId });
+        currentMarkers.push({ marker: marker, infowindow: infowindow, position: position, contentId: spot.contentId });
       });
 
       if (spots.length === 1) {
@@ -197,7 +224,7 @@ function buildMapHtml(appkey: string): string {
       if (!map) {
         return;
       }
-      const found = currentOverlays.find(function (item) {
+      const found = currentMarkers.find(function (item) {
         return item.contentId === contentId;
       });
       if (!found) {
@@ -245,6 +272,8 @@ function buildMapHtml(appkey: string): string {
               center: new kakao.maps.LatLng(${GYEONGBUK_CENTER.lat}, ${GYEONGBUK_CENTER.lng}),
               level: 8,
             });
+
+            map.addControl(new kakao.maps.ZoomControl(), kakao.maps.ControlPosition.RIGHT);
 
             kakao.maps.event.addListener(map, 'click', function () {
               closeOpenInfowindow();
@@ -329,7 +358,10 @@ export default function MapScreen() {
     const [pinsLoading, setPinsLoading] = useState(true);
 
     const html = useMemo(
-        () => (KAKAO_MAP_KEY ? buildMapHtml(KAKAO_MAP_KEY) : ''),
+        () =>
+            KAKAO_MAP_KEY
+                ? buildMapHtml(KAKAO_MAP_KEY, CATEGORY_EMOJI, CATEGORY_MARKER_COLOR, ScreenTheme.deepGreen)
+                : '',
         [],
     );
 
@@ -588,7 +620,15 @@ const styles = StyleSheet.create({
     },
     mapWrap: {
         marginTop: 12,
+        marginHorizontal: 20,
+        borderRadius: 20,
         overflow: 'hidden',
+        backgroundColor: ScreenTheme.card,
+        shadowColor: '#000',
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
+        shadowOffset: { width: 0, height: 5 },
+        elevation: 3,
     },
     webview: {
         flex: 1,
