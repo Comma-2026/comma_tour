@@ -378,8 +378,7 @@ def _extract_fee(info_items: list[dict]) -> str | None:
             fee_row = row
     if fee_row is None:
         return None
-    text = _strip_html(fee_row.get("infotext", ""))
-    return text[:60] + ("…" if len(text) > 60 else "")
+    return _strip_html(fee_row.get("infotext", ""))
 
 
 def _signgu_cd(item: dict) -> str:
