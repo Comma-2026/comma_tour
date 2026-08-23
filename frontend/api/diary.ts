@@ -25,10 +25,18 @@ export function diaryPhotoUrl(pinId: string): string {
 /**
  * expo-image에 넘길 사진 소스(토큰 헤더 포함).
  * 사진 엔드포인트도 계정별로 잠겨 있어 Authorization 헤더가 필요하다.
+ *
+ * version(일기의 updated_at)을 넘기면 URL 쿼리로 붙는다 — 사진을 수정해도 URL이 같으면
+ * expo-image가 캐시된 옛 사진을 계속 보여주므로, 수정 시각으로 캐시를 깬다.
  */
-export function diaryPhotoSource(pinId: string, token: string | null) {
+export function diaryPhotoSource(
+  pinId: string,
+  token: string | null,
+  version?: string | null,
+) {
+  const query = version ? `?v=${encodeURIComponent(version)}` : '';
   return {
-    uri: diaryPhotoUrl(pinId),
+    uri: `${diaryPhotoUrl(pinId)}${query}`,
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   };
 }

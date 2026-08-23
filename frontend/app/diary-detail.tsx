@@ -104,7 +104,7 @@ export default function DiaryDetailScreen() {
 
           {diary.has_photo && (
             <Image
-              source={diaryPhotoSource(pinId, token)}
+              source={diaryPhotoSource(pinId, token, diary.updated_at)}
               style={styles.photo}
               contentFit="cover"
               transition={150}

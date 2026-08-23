@@ -155,7 +155,7 @@ export default function DiaryScreen() {
                                     </View>
                                     {diary.has_photo && (
                                         <Image
-                                            source={diaryPhotoSource(diary.pin_id, token)}
+                                            source={diaryPhotoSource(diary.pin_id, token, diary.updated_at)}
                                             style={styles.thumbnail}
                                             contentFit="cover"
                                             transition={150}

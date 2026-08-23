@@ -56,6 +56,9 @@ export default function DiaryWriteScreen() {
 
   // 이미 저장된 사진 존재 여부(수정 진입 시) — 서버 이미지로 미리보기.
   const [hasSavedPhoto, setHasSavedPhoto] = useState(false);
+  // 저장된 사진의 캐시 버스터(일기 updated_at) — 사진을 바꿔 저장해도 URL이 같으면
+  // expo-image가 캐시된 옛 사진을 보여주므로, 수정 시각을 URL에 붙여 캐시를 깬다.
+  const [savedPhotoVersion, setSavedPhotoVersion] = useState<string | null>(null);
   // 이번에 새로 고른 사진(미리보기용 로컬 uri + 전송용 base64).
   const [newPhotoUri, setNewPhotoUri] = useState<string | null>(null);
   const [newPhotoBase64, setNewPhotoBase64] = useState<string | null>(null);
@@ -76,6 +79,7 @@ export default function DiaryWriteScreen() {
         setContent(existing.content);
         setVisitedDate(existing.visited_at ?? '');
         setHasSavedPhoto(existing.has_photo);
+        setSavedPhotoVersion(existing.updated_at);
       }
       setLoading(false);
     });
@@ -150,7 +154,7 @@ export default function DiaryWriteScreen() {
   const previewSource = newPhotoUri
     ? { uri: newPhotoUri }
     : hasSavedPhoto
-      ? diaryPhotoSource(pinId, token)
+      ? diaryPhotoSource(pinId, token, savedPhotoVersion)
       : null;
 
   return (
