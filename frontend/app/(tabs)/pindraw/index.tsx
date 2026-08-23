@@ -574,7 +574,9 @@ export default function PinDrawScreen() {
       {!loading && error && (
         <View style={styles.centerBox}>
           <Text style={styles.desc}>
-            추천을 불러오지 못했어요. 잠시 후 다시 시도해주세요.
+            {preference.has('pet_friendly')
+              ? '선택한 지역과 테마에서 반려동물 동반 정보가 있는 관광지를 찾지 못했어요.'
+              : '추천을 불러오지 못했어요. 잠시 후 다시 시도해주세요.'}
           </Text>
           <TouchableOpacity style={styles.retryButton} onPress={() => draw()}>
             <Text style={styles.retryButtonText}>다시 시도</Text>

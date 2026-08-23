@@ -224,5 +224,9 @@ backend/login/mock_ldap.json
 backend/spots/spots_cache.json
 # 관광지 real 모드 디스크 캐시(런타임 생성, 재시작 후에도 API 재호출 안 하려고 저장)
 backend/spots/spots_cache.json
+# 반려동물 상세정보 인덱스(런타임 자동 생성·갱신)
+backend/spots/pet_info_cache.json
+backend/spots/pet_info_cache.json.lock
+backend/spots/pet_info_cache.json.tmp
 
 **.vscode/

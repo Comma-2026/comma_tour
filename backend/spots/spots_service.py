@@ -20,8 +20,8 @@ _CATALOG_FIELDS = ["id", "name", "region", "icon", "category", "shortDesc", "lat
 # 태그로는 구분이 안 된다 — 출처 contentTypeId로 직접 구분한다.
 _LEISURE_CONTENT_TYPE_ID = 28
 
-# 카드 하단 "어떤 점이 아쉬웠나요?" 피드백 칩 → 다음 추천 후보 필터.
-# 필터를 적용한 결과가 비면(너무 좁으면) 해당 필터는 건너뛴다.
+# 첫 진입 설문의 선택 조건 → 추천 후보 필터.
+# 반려동물 조건은 사전 생성한 로컬 인덱스로 recommend_spots에서 별도 하드 필터링한다.
 _FEEDBACK_FILTERS = {
     "too_far": lambda s: s["distanceMinutes"] <= 120,
     "want_quieter": lambda s: s["congestionLevel"] == "very_quiet",
@@ -30,7 +30,6 @@ _FEEDBACK_FILTERS = {
     "lacking_sights": lambda s: len(s["tags"]) >= 2,
     "free_only": lambda s: s["admissionFee"] == "무료",
     "parking_required": lambda s: s["hasParking"],
-    "pet_friendly": lambda s: s["petFriendly"],
 }
 
 # 설문 "테마별" 다중 선택(전체 + 6종, 중복 선택 가능) → 추천 풀을 좁히는 하드 필터.
@@ -104,6 +103,7 @@ def recommend_spots(
     if len(pool) < count:
         pool = base_pool
 
+    wants_pet_friendly = "pet_friendly" in (feedback_tags or [])
     for tag in feedback_tags or []:
         filter_fn = _FEEDBACK_FILTERS.get(tag)
         if filter_fn is None:
@@ -111,6 +111,12 @@ def recommend_spots(
         filtered = [s for s in pool if filter_fn(s)]
         if filtered:
             pool = filtered
+
+    # 목록 API에는 반려동물 정보가 없어 사전 생성한 로컬 인덱스로 거른다. 사용자가 명시적으로
+    # 고른 필수 조건이므로 결과가 없어도 일반 관광지로 우회하지 않는다.
+    if wants_pet_friendly:
+        pet_friendly_ids = spots_model.get_pet_friendly_ids()
+        pool = [spot for spot in pool if spot["id"] in pet_friendly_ids]
 
     picked = random.sample(pool, min(count, len(pool)))
     return [_to_card(s) for s in picked]

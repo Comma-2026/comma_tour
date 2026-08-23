@@ -69,6 +69,7 @@ def _ttl_cache(ttl_seconds: float):
 
 _DATA_FILE = os.path.join(os.path.dirname(__file__), "spots_data.json")
 _LIST_CACHE_FILE = os.path.join(os.path.dirname(__file__), "spots_cache.json")
+_PET_INFO_CACHE_FILE = os.path.join(os.path.dirname(__file__), "pet_info_cache.json")
 
 _spots_cache: list[dict] | None = None
 
@@ -406,6 +407,22 @@ def _extract_pet_info(pet_items: list[dict]) -> str | None:
     return "\n".join(details) or None
 
 
+@_ttl_cache(config.SPOT_CACHE_TTL_SECONDS)
+def _real_get_pet_info(spot_id: str) -> str | None:
+    """추천과 상세 조회가 같은 반려동물 응답을 재사용하도록 관광지별로 캐시한다."""
+    return _extract_pet_info(_tour_api_get("detailPetTour2", contentId=spot_id))
+
+
+def _load_pet_info_index() -> dict[str, str]:
+    """사전 생성된 반려동물 안내 인덱스를 읽는다. 파일이 없거나 깨졌으면 빈 인덱스다."""
+    try:
+        with open(_PET_INFO_CACHE_FILE, encoding="utf-8") as f:
+            payload = json.load(f)
+        return payload.get("spots", {})
+    except (FileNotFoundError, ValueError, json.JSONDecodeError):
+        return {}
+
+
 def _signgu_cd(item: dict) -> str:
     """법정동 시군구코드(예: 경주시=47130) = 시도코드(lDongRegnCd) + 시군구코드(lDongSignguCd)."""
     return f"{item.get('lDongRegnCd', '')}{item.get('lDongSignguCd', '')}"
@@ -621,8 +638,7 @@ def _real_get_spot_by_id(spot_id: str) -> dict | None:
         if parking:
             spot["hasParking"] = not ("불가" in parking or "없음" in parking)
 
-    pet_result = _tour_api_get("detailPetTour2", contentId=spot_id)
-    pet_info = _extract_pet_info(pet_result)
+    pet_info = _load_pet_info_index().get(spot_id) or _real_get_pet_info(spot_id)
     if pet_info:
         spot["petFriendly"] = True
         spot["petInfo"] = pet_info
@@ -648,3 +664,10 @@ def get_all_spots() -> list[dict]:
 
 def get_spot_by_id(spot_id: str) -> dict | None:
     return _real_get_spot_by_id(spot_id) if _is_real() else _mock_get_spot_by_id(spot_id)
+
+
+def get_pet_friendly_ids() -> set[str]:
+    """추천에서 즉시 필터링할 수 있는 반려동물 동반 가능 관광지 ID 집합."""
+    if _is_real():
+        return set(_load_pet_info_index())
+    return {spot["id"] for spot in _mock_get_all_spots() if spot.get("petFriendly")}

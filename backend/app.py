@@ -1,4 +1,8 @@
 """Flask 애플리케이션 진입점."""
+import os
+import subprocess
+import sys
+
 from flask import Flask, jsonify
 from flask_cors import CORS
 
@@ -25,7 +29,21 @@ def create_app() -> Flask:
     return app
 
 
+def start_pet_info_auto_refresh() -> None:
+    """추천 응답을 막지 않고 별도 프로세스에서 하루치 반려동물 인덱스를 갱신한다."""
+    if config.SPOT_MODE != "real":
+        return
+    script_path = os.path.join(os.path.dirname(__file__), "build_pet_info_index.py")
+    creation_flags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
+    subprocess.Popen(
+        [sys.executable, script_path, "--auto"],
+        cwd=os.path.dirname(__file__),
+        creationflags=creation_flags,
+    )
+
+
 app = create_app()
+start_pet_info_auto_refresh()
 
 
 if __name__ == "__main__":
