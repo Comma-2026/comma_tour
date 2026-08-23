@@ -3,16 +3,24 @@ import type { SpotCategory } from '@/types/spot';
 /**
  * 카테고리별 이모지/라벨/배경색 공용 정의.
  * 지도 탭과 핀 기록 화면이 각자 따로 들고 있으면 하나만 고치고 잊어버리기 쉬워서 여기로 뺐다.
- * (카카오맵 WebView 안에 주입되는 JS는 RN 모듈을 import 못 해서 별도 리터럴로 남아있음 — map.tsx 참고,
- * 카테고리 추가/변경 시 거기도 같이 맞춰야 한다.)
+ * (카카오맵 WebView 안의 JS는 RN 모듈을 import 못 하지만, map.tsx가 이 값들을 JSON으로 직렬화해
+ * 주입하므로 여기만 고치면 지도 마커에도 자동 반영된다.)
  */
 export const CATEGORY_EMOJI: Record<SpotCategory, string> = {
-    nature: '🏔',
-    history: '⛩',
-    culture: '🏙',
+    nature: '🌿',
+    history: '🏛',
+    culture: '🎭',
     experience: '🎨',
-    night: '🌃',
     etc: '📍',
+};
+
+/** 지도 마커 배지 색(핀 채우기 색). 카드 배경색(CATEGORY_ICON_BG)보다 채도를 높여 지도 위에서 도드라지게 한다. */
+export const CATEGORY_MARKER_COLOR: Record<SpotCategory, string> = {
+    nature: '#4c8c5c',
+    history: '#a8763e',
+    culture: '#8b6bb1',
+    experience: '#e08a3c',
+    etc: '#8a8f86',
 };
 
 export const CATEGORY_LABEL: Record<SpotCategory, string> = {
@@ -20,7 +28,6 @@ export const CATEGORY_LABEL: Record<SpotCategory, string> = {
     history: '역사',
     culture: '문화',
     experience: '체험',
-    night: '야경',
     etc: '기타',
 };
 
@@ -29,7 +36,6 @@ export const CATEGORY_ICON_BG: Record<SpotCategory, string> = {
     history: '#f1e6da',
     culture: '#ece3f5',
     experience: '#fdeee0',
-    night: '#1f2a44',
     etc: '#eceae3',
 };
 
