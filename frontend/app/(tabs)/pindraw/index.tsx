@@ -17,7 +17,6 @@ import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
-  FEEDBACK_TAGS,
   PREFERENCE_TAG_GROUPS,
   THEME_CATEGORIES,
   THEME_HELP_NOTICE,
@@ -66,7 +65,6 @@ export default function PinDrawScreen() {
 
   const [cards, setCards] = useState<SpotCard[]>([]);
   const [index, setIndex] = useState(0);
-  const [feedback, setFeedback] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   // 5개 한 묶음을 다 패스하면 1번만 추가로 5개를 더 준다(총 10번의 패스 기회).
@@ -74,13 +72,12 @@ export default function PinDrawScreen() {
   const [extraRoundUsed, setExtraRoundUsed] = useState(false);
 
   const draw = useCallback(
-    async (excludeIds: string[] = [], roundFeedbackTags: string[] = []) => {
+    async (excludeIds: string[] = []) => {
       setLoading(true);
       setError(false);
-      const tags = [...preference, ...roundFeedbackTags];
       const spots = await fetchRecommendedSpots(
         excludeIds,
-        tags,
+        Array.from(preference),
         Array.from(selectedRegions),
         debugSourceType,
         Array.from(selectedThemes),
@@ -90,7 +87,6 @@ export default function PinDrawScreen() {
       } else {
         setCards(spots);
         setIndex(0);
-        setFeedback(new Set());
       }
       setLoading(false);
     },
@@ -116,7 +112,6 @@ export default function PinDrawScreen() {
     setDebugSourceType(null);
     setCards([]);
     setIndex(0);
-    setFeedback(new Set());
     setError(false);
     setExtraRoundUsed(false);
   }, []);
@@ -182,18 +177,6 @@ export default function PinDrawScreen() {
     });
   };
 
-  const toggleFeedback = (tagId: string) => {
-    setFeedback((prev) => {
-      const next = new Set(prev);
-      if (next.has(tagId)) {
-        next.delete(tagId);
-      } else {
-        next.add(tagId);
-      }
-      return next;
-    });
-  };
-
   // 초기화 확인창 없이 바로 초기화 — "더 뽑을 기회가 없어서" 끝나는 경우라 나갈지 물을 필요는
   // 없고, 초기화된다는 사실만 알려주면 된다(confirmResetIfNeeded와는 별개의 상황).
   const resetWithNotice = () => {
@@ -220,10 +203,7 @@ export default function PinDrawScreen() {
           text: '추가 뽑기',
           onPress: () => {
             setExtraRoundUsed(true);
-            draw(
-              cards.map((card) => card.id),
-              Array.from(feedback),
-            );
+            draw(cards.map((card) => card.id));
           },
         },
       ],
@@ -622,30 +602,6 @@ export default function PinDrawScreen() {
             <Text style={styles.metaText}>🚗 {distanceLabel}</Text>
           </View>
 
-          <Text style={styles.feedbackLabel}>어떤 점이 아쉬웠나요?</Text>
-          <View style={styles.chipRow}>
-            {FEEDBACK_TAGS.map((tag) => {
-              const selected = feedback.has(tag.id);
-              return (
-                <TouchableOpacity
-                  key={tag.id}
-                  style={[styles.chip, selected && styles.chipSelected]}
-                  activeOpacity={0.8}
-                  onPress={() => toggleFeedback(tag.id)}
-                >
-                  <Text
-                    style={[
-                      styles.chipText,
-                      selected && styles.chipTextSelected,
-                    ]}
-                  >
-                    {tag.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
           <View style={styles.actionRow}>
             <TouchableOpacity
               style={styles.passButton}
@@ -917,12 +873,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: ScreenTheme.greenDeep,
-  },
-  feedbackLabel: {
-    marginTop: 20,
-    fontSize: 13,
-    fontWeight: '700',
-    color: ScreenTheme.text,
   },
   chipRow: {
     marginTop: 10,

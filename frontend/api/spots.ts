@@ -37,15 +37,6 @@ export type SpotDetail = SpotCard & {
   transportInfo: string;
 };
 
-/** 카드 하단 "어떤 점이 아쉬웠나요?" 피드백 칩. id는 백엔드 필터 키와 1:1로 맞춘다. */
-export const FEEDBACK_TAGS: { id: string; label: string }[] = [
-  { id: 'too_far', label: '너무 멀어요' },
-  { id: 'want_quieter', label: '더 조용한 곳이 좋아요' },
-  { id: 'want_food', label: '먹거리도 있었으면 해요' },
-  { id: 'no_walking', label: '걷기 싫어요' },
-  { id: 'lacking_sights', label: '볼거리가 부족해요' },
-];
-
 /**
  * "기본" 그룹 옆 ? 도움말 — 혼잡도 데이터가 일부 관광지에만 있다는 API 한계를 안내.
  * 문단 배열로 두고 화면에서 문단 사이 여백을 줘서 가독성을 높인다.
