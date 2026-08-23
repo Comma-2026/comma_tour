@@ -28,9 +28,6 @@ real 모드 설계:
       동안 캐싱한다. 각 API 일일 트래픽이 1,000회뿐이라 요청마다 실제 호출하면 금방 소진된다.
       (Flask 프로세스 메모리에만 캐싱 — 워커를 여러 개 띄우면 워커별로 따로 캐싱됨)
 
-아직 실제 응답으로 채우지 못한 것 (다음 연동 대상):
-    - transportInfo          → TourAPI 관광지(contentTypeId=12) 스키마엔 대중교통 경로 정보가 없음
-
 (별점/리뷰는 카카오맵 API도 제공 안 해서 기능 자체를 뺐다 — rating/reviewQuote 필드 없음.)
 """
 from __future__ import annotations
@@ -381,6 +378,34 @@ def _extract_fee(info_items: list[dict]) -> str | None:
     return _strip_html(fee_row.get("infotext", ""))
 
 
+def _extract_pet_info(pet_items: list[dict]) -> str | None:
+    """반려동물 동반여행 응답에서 사용자가 방문 전에 알아야 할 안내를 모은다."""
+    if not pet_items:
+        return None
+
+    row = pet_items[0]
+    direct_info = _strip_html(row.get("petTursmInfo", ""))
+    if direct_info:
+        return direct_info
+
+    fields = [
+        ("동반 가능 동물", "acmpyPsblCpam"),
+        ("동반 시 필요사항", "acmpyNeedMtr"),
+        ("기타 안내", "etcAcmpyInfo"),
+        ("구비 시설", "relaPosesFclty"),
+        ("비치 품목", "relaFrnshPrdlst"),
+        ("대여 품목", "relaRntlPrdlst"),
+        ("구매 품목", "relaPurcPrdlst"),
+        ("안전 안내", "relaAcdntRiskMtr"),
+    ]
+    details = []
+    for label, key in fields:
+        value = _strip_html(row.get(key, ""))
+        if value:
+            details.append(f"{label}: {value}")
+    return "\n".join(details) or None
+
+
 def _signgu_cd(item: dict) -> str:
     """법정동 시군구코드(예: 경주시=47130) = 시도코드(lDongRegnCd) + 시군구코드(lDongSignguCd)."""
     return f"{item.get('lDongRegnCd', '')}{item.get('lDongSignguCd', '')}"
@@ -470,6 +495,7 @@ def _base_fields(
         # None이고, 상세 조회(get_spot_by_id)에서 실제 값(True/False)으로 채워진다.
         "hasParking": None,
         "petFriendly": False,
+        "petInfo": "정보 없음",
         "admissionFee": "정보 없음",
         "businessHours": "정보 없음",
         "transportInfo": "정보 없음",
@@ -596,7 +622,10 @@ def _real_get_spot_by_id(spot_id: str) -> dict | None:
             spot["hasParking"] = not ("불가" in parking or "없음" in parking)
 
     pet_result = _tour_api_get("detailPetTour2", contentId=spot_id)
-    spot["petFriendly"] = len(pet_result) > 0
+    pet_info = _extract_pet_info(pet_result)
+    if pet_info:
+        spot["petFriendly"] = True
+        spot["petInfo"] = pet_info
 
     info = _tour_api_get("detailInfo2", contentId=spot_id, contentTypeId=content_type_id)
     fee = _extract_fee(info)

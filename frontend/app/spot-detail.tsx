@@ -210,7 +210,13 @@ export default function SpotDetailScreen() {
 
           <View style={styles.infoCard}>
             <InfoRow label="지역" value={spot.region} />
-            <InfoRow label="교통" value={spot.transportInfo} />
+            <InfoRow
+              label="반려동물"
+              value={
+                spot.petInfo ||
+                (spot.petFriendly ? '반려동물 동반 가능' : '정보 없음')
+              }
+            />
             <InfoRow
               label="주차"
               value={

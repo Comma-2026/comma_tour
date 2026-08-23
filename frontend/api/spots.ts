@@ -33,6 +33,8 @@ export type SpotCatalogItem = {
 export type SpotDetail = SpotCard & {
   /** 관광지 상세 개요. 구형 목업 데이터에는 없을 수 있어 shortDesc로 대체한다. */
   fullDesc?: string;
+  /** TourAPI 반려동물 동반여행 안내. 목업 데이터에는 없을 수 있다. */
+  petInfo?: string;
   hasParking: boolean | null;
   admissionFee: string;
   businessHours: string;
