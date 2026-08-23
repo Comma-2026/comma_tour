@@ -211,7 +211,16 @@ export default function SpotDetailScreen() {
           <View style={styles.infoCard}>
             <InfoRow label="지역" value={spot.region} />
             <InfoRow label="교통" value={spot.transportInfo} />
-            <InfoRow label="주차" value={spot.hasParking ? 'O' : 'X'} />
+            <InfoRow
+              label="주차"
+              value={
+                spot.hasParking === null
+                  ? '정보 없음'
+                  : spot.hasParking
+                    ? 'O'
+                    : 'X'
+              }
+            />
             <InfoRow label="이용권" value={spot.admissionFee} />
             <InfoRow label="영업시간" value={spot.businessHours} />
             <InfoRow label="거리" value={distanceLabel} last />

@@ -163,6 +163,17 @@ _CATEGORY_MAP = {
 # 출처(contentTypeId) 기준으로 고정 분류한다: 문화시설(14)·시장(38)=문화, 레포츠(28)=체험.
 _SOURCE_CATEGORY_MAP = {14: "문화", 28: "체험", 38: "문화"}
 
+# detailIntro2의 주차 필드명은 contentTypeId마다 다르다(TourAPI 스키마가 출처별로 다름).
+# 기본값(12=관광지)만 "parking"이고 나머지는 접미사가 붙는다. 15(축제/공연/행사)는
+# 필드 자체가 없다(임시 행사라 고정 주차 정보가 없는 듯) — 이 경우 매칭 실패로
+# None(정보 없음) 기본값 유지.
+_PARKING_FIELD_BY_CONTENT_TYPE = {
+    12: "parking",
+    14: "parkingculture",
+    28: "parkingleports",
+    38: "parkingshopping",
+}
+
 
 def _classify_category(lcls_systm1: str, content_type_id: int) -> str:
     source_category = _SOURCE_CATEGORY_MAP.get(content_type_id)
@@ -456,7 +467,9 @@ def _base_fields(
         "distanceMinutes": distance_minutes,
         "requiresWalking": False,
         "hasFoodNearby": False,  # TODO: 주변 음식점 검색(별도 호출) 연동
-        "hasParking": True,
+        # None = 정보 없음. 목록 단계에선 스팟당 detailIntro2를 추가로 부르지 않으므로 항상
+        # None이고, 상세 조회(get_spot_by_id)에서 실제 값(True/False)으로 채워진다.
+        "hasParking": None,
         "petFriendly": False,
         "admissionFee": "정보 없음",
         "businessHours": "정보 없음",
@@ -472,7 +485,9 @@ def _base_fields(
 # v4: 집중률 매칭 실패 시 폴백이 "보통"/moderate에서 "정보 없음"/unknown으로 바뀜.
 # v5: category 분류가 출처 기준 보정됨 — 문화시설(14)·시장(38)=문화, 레포츠(28)=체험
 #     (이전엔 시장=기타, 레포츠=기타/문화(VE10)로 찍혔음).
-_CACHE_SCHEMA_VERSION = 5
+# v6: hasParking 기본값이 True에서 None(정보 없음)으로 바뀜 — 이전엔 주차 정보가 없는
+#     스팟도 전부 "가능(O)"으로 잘못 표시됐음.
+_CACHE_SCHEMA_VERSION = 6
 
 
 def _load_disk_cache() -> list[dict] | None:
@@ -574,9 +589,12 @@ def _real_get_spot_by_id(spot_id: str) -> dict | None:
             spot["businessHours"] = (
                 f"{usetime} (쉬는 날: {restdate})" if restdate and restdate != "연중무휴" else usetime
             )
-        parking = row.get("parking", "")
-        if "불가" in parking or "없음" in parking:
-            spot["hasParking"] = False
+        parking_field = _PARKING_FIELD_BY_CONTENT_TYPE.get(content_type_id)
+        parking = row.get(parking_field, "") if parking_field else ""
+        # parking이 빈 값이면(필드 자체가 없거나 API가 비워서 줌) hasParking은 _base_fields의
+        # 기본값(None="정보 없음")을 그대로 둔다 — 모르는 걸 임의로 True/False로 단정하지 않는다.
+        if parking:
+            spot["hasParking"] = not ("불가" in parking or "없음" in parking)
 
     pet_result = _tour_api_get("detailPetTour2", contentId=spot_id)
     spot["petFriendly"] = len(pet_result) > 0

@@ -33,7 +33,7 @@ export type SpotCatalogItem = {
 export type SpotDetail = SpotCard & {
   /** 관광지 상세 개요. 구형 목업 데이터에는 없을 수 있어 shortDesc로 대체한다. */
   fullDesc?: string;
-  hasParking: boolean;
+  hasParking: boolean | null;
   admissionFee: string;
   businessHours: string;
   transportInfo: string;
