@@ -138,6 +138,23 @@ export default function PinDrawScreen() {
 
   const current = cards[index];
 
+  const selectedPreferenceLabels = [
+    preference.has('want_quieter') ? '조용한 곳' : '기본',
+    ...PREFERENCE_TAG_GROUPS.flatMap((group) => group.tags)
+      .filter(
+        (tag) => tag.id !== 'want_quieter' && preference.has(tag.id),
+      )
+      .map((tag) => tag.label),
+  ];
+  const selectedThemeLabels =
+    selectedThemes.size === 0
+      ? ['전체']
+      : THEME_CATEGORIES.filter((theme) => selectedThemes.has(theme.id)).map(
+          (theme) => theme.label,
+        );
+  const selectedRegionLabels =
+    selectedRegions.size === 0 ? ['전체'] : Array.from(selectedRegions);
+
   // 내 위치 기준 거리 라벨(위치 확인 중/권한 없음 상태도 문구로 표시).
   const distanceLabel = useSpotDistance(current);
 
@@ -602,6 +619,37 @@ export default function PinDrawScreen() {
             <Text style={styles.metaText}>🚗 {distanceLabel}</Text>
           </View>
 
+          <View style={styles.selectionSummary}>
+            <View style={styles.selectionSummaryHeader}>
+              <Ionicons
+                name="options-outline"
+                size={16}
+                color={ScreenTheme.greenDeep}
+              />
+              <Text style={styles.selectionSummaryTitle}>내가 고른 여행 조건</Text>
+            </View>
+
+            {[
+              { label: '조건', values: selectedPreferenceLabels },
+              { label: '테마', values: selectedThemeLabels },
+              { label: '지역', values: selectedRegionLabels },
+            ].map((group) => (
+              <View key={group.label} style={styles.selectionSummaryRow}>
+                <Text style={styles.selectionSummaryLabel}>{group.label}</Text>
+                <View style={styles.selectionSummaryValues}>
+                  {group.values.map((value) => (
+                    <View
+                      key={`${group.label}-${value}`}
+                      style={styles.selectionSummaryChip}
+                    >
+                      <Text style={styles.selectionSummaryChipText}>{value}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ))}
+          </View>
+
           <View style={styles.actionRow}>
             <TouchableOpacity
               style={styles.passButton}
@@ -871,6 +919,56 @@ const styles = StyleSheet.create({
   },
   metaText: {
     fontSize: 12,
+    fontWeight: '700',
+    color: ScreenTheme.greenDeep,
+  },
+  selectionSummary: {
+    marginTop: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#e4e0d3',
+    backgroundColor: '#f5f3eb',
+    gap: 9,
+  },
+  selectionSummaryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 1,
+  },
+  selectionSummaryTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: ScreenTheme.greenDeep,
+  },
+  selectionSummaryRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  selectionSummaryLabel: {
+    width: 30,
+    paddingTop: 5,
+    fontSize: 11,
+    fontWeight: '700',
+    color: ScreenTheme.muted,
+  },
+  selectionSummaryValues: {
+    flex: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  selectionSummaryChip: {
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: '#e5ede6',
+  },
+  selectionSummaryChipText: {
+    fontSize: 11,
     fontWeight: '700',
     color: ScreenTheme.greenDeep,
   },
