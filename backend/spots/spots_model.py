@@ -423,6 +423,25 @@ def _load_pet_info_index() -> dict[str, str]:
         return {}
 
 
+def get_pet_index_status() -> dict[str, int | str]:
+    """최초 로컬 인덱스 구축이 추천 가능한 수준인지 반환한다."""
+    if not _is_real():
+        return {"status": "ready", "checked": 0, "petFriendlyCount": 0}
+    try:
+        with open(_PET_INFO_CACHE_FILE, encoding="utf-8") as f:
+            payload = json.load(f)
+    except (FileNotFoundError, ValueError, json.JSONDecodeError):
+        return {"status": "building", "checked": 0, "petFriendlyCount": 0}
+
+    checked = len(payload.get("checkedAt", payload.get("checkedIds", [])))
+    pet_count = len(payload.get("spots", {}))
+    return {
+        "status": "ready" if pet_count >= 5 else "building",
+        "checked": checked,
+        "petFriendlyCount": pet_count,
+    }
+
+
 def _signgu_cd(item: dict) -> str:
     """법정동 시군구코드(예: 경주시=47130) = 시도코드(lDongRegnCd) + 시군구코드(lDongSignguCd)."""
     return f"{item.get('lDongRegnCd', '')}{item.get('lDongSignguCd', '')}"

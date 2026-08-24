@@ -67,6 +67,7 @@ export default function PinDrawScreen() {
   const [index, setIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [petIndexBuilding, setPetIndexBuilding] = useState(false);
   // 5개 한 묶음을 다 패스하면 1번만 추가로 5개를 더 준다(총 10번의 패스 기회).
   // 그 추가 기회까지 다 쓰면 확인 없이 바로 초기화한다.
   const [extraRoundUsed, setExtraRoundUsed] = useState(false);
@@ -75,17 +76,21 @@ export default function PinDrawScreen() {
     async (excludeIds: string[] = []) => {
       setLoading(true);
       setError(false);
-      const spots = await fetchRecommendedSpots(
+      setPetIndexBuilding(false);
+      const result = await fetchRecommendedSpots(
         excludeIds,
         Array.from(preference),
         Array.from(selectedRegions),
         debugSourceType,
         Array.from(selectedThemes),
       );
-      if (spots.length === 0) {
+      if (result.status === 'building') {
+        setPetIndexBuilding(true);
+        setError(true);
+      } else if (result.spots.length === 0) {
         setError(true);
       } else {
-        setCards(spots);
+        setCards(result.spots);
         setIndex(0);
       }
       setLoading(false);
@@ -574,7 +579,9 @@ export default function PinDrawScreen() {
       {!loading && error && (
         <View style={styles.centerBox}>
           <Text style={styles.desc}>
-            {preference.has('pet_friendly')
+            {petIndexBuilding
+              ? '반려동물 관광 정보를 준비하고 있어요. 잠시 후 다시 확인해주세요.'
+              : preference.has('pet_friendly')
               ? '선택한 지역과 테마에서 반려동물 동반 정보가 있는 관광지를 찾지 못했어요.'
               : '추천을 불러오지 못했어요. 잠시 후 다시 시도해주세요.'}
           </Text>

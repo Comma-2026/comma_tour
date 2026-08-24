@@ -35,6 +35,7 @@ export type SpotDetail = SpotCard & {
   fullDesc?: string;
   /** TourAPI 반려동물 동반여행 안내. 목업 데이터에는 없을 수 있다. */
   petInfo?: string;
+  petFriendly: boolean;
   hasParking: boolean | null;
   admissionFee: string;
   businessHours: string;
@@ -174,7 +175,7 @@ export async function fetchRecommendedSpots(
   regions: string[] = [],
   sourceContentType?: number | null,
   themes: string[] = [],
-): Promise<SpotCard[]> {
+): Promise<{ spots: SpotCard[]; status: 'ready' | 'building' | 'error' }> {
   const params = new URLSearchParams();
   if (excludeIds.length > 0) params.set('exclude', excludeIds.join(','));
   if (feedbackTags.length > 0) params.set('feedback', feedbackTags.join(','));
@@ -183,8 +184,13 @@ export async function fetchRecommendedSpots(
   if (sourceContentType) params.set('sourceType', String(sourceContentType));
   const query = params.toString() ? `?${params.toString()}` : '';
 
-  const data = await getJson<{ spots: SpotCard[] }>(`/api/spots/recommend${query}`);
-  return data?.spots ?? [];
+  const data = await getJson<{ spots: SpotCard[]; status?: 'ready' | 'building' }>(
+    `/api/spots/recommend${query}`,
+  );
+  return {
+    spots: data?.spots ?? [],
+    status: data?.status ?? 'error',
+  };
 }
 
 /** 선택 가능한 지역(시군구) 목록. */

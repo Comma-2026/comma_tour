@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from flask import Blueprint, jsonify, request
 
-from spots.spots_model import fetch_drive_route
+from spots.spots_model import fetch_drive_route, get_pet_index_status
 from spots.spots_service import (
     SpotNotFoundError,
     get_available_regions,
@@ -25,10 +25,14 @@ def recommend_route():
     # 디버그용 — 12/14/28/38 각 출처가 실제로 잘 불러와졌는지 확인할 때만 쓴다.
     source_type_raw = request.args.get("sourceType")
     source_content_type = int(source_type_raw) if source_type_raw else None
+    if "pet_friendly" in feedback_tags:
+        pet_status = get_pet_index_status()
+        if pet_status["status"] == "building":
+            return jsonify({"spots": [], **pet_status})
     spots = recommend_spots(
         exclude_ids, feedback_tags, regions, source_content_type=source_content_type, themes=themes
     )
-    return jsonify({"spots": spots})
+    return jsonify({"spots": spots, "status": "ready"})
 
 
 @spots_bp.get("/regions")

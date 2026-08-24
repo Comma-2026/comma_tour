@@ -30,7 +30,7 @@ def create_app() -> Flask:
 
 
 def start_pet_info_auto_refresh() -> None:
-    """추천 응답을 막지 않고 별도 프로세스에서 하루치 반려동물 인덱스를 갱신한다."""
+    """캐시가 없으면 전체 구축하고, 이후에는 별도 프로세스에서 하루치만 갱신한다."""
     if config.SPOT_MODE != "real":
         return
     script_path = os.path.join(os.path.dirname(__file__), "build_pet_info_index.py")

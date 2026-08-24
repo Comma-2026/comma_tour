@@ -57,15 +57,16 @@ def main(*, automatic: bool = False, force: bool = False) -> None:
 
     try:
         payload = load_index()
+        checked_at = migrate_checked_times(payload)
+        initial_build = not checked_at
         today = date.today().isoformat()
-        if automatic and payload.get("lastAutoAttemptDate") == today:
+        if automatic and not initial_build and payload.get("lastAutoAttemptDate") == today:
             print("오늘 자동 갱신을 이미 실행했습니다.")
             return
         if automatic:
             payload["lastAutoAttemptDate"] = today
             save_index(payload)
 
-        checked_at = migrate_checked_times(payload)
         pet_spots: dict[str, str] = payload.get("spots", {})
         all_spots = spots_model.get_all_spots()
         cutoff = int(time.time()) - REFRESH_SECONDS
@@ -74,7 +75,7 @@ def main(*, automatic: bool = False, force: bool = False) -> None:
             if force or checked_at.get(spot["id"], 0) < cutoff
         ]
         due.sort(key=lambda spot: checked_at.get(spot["id"], 0))
-        if automatic:
+        if automatic and not initial_build:
             due = due[:AUTO_DAILY_LIMIT]
 
         print(f"전체 {len(all_spots)}곳 / 이번 갱신 {len(due)}곳")
